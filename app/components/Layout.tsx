@@ -1,6 +1,5 @@
 'use client'
 
-import { useDashboard } from '@/app/context/DashboardContext'
 import Header from './Header'
 
 interface LayoutProps {
@@ -10,7 +9,7 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header onMenuClick={() => {}} />
+      <Header />
       
       <main className="py-8 min-h-screen">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -19,4 +18,4 @@ export default function Layout({ children }: LayoutProps) {
       </main>
     </div>
   )
-} 
+}

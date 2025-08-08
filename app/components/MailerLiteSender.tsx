@@ -114,7 +114,7 @@ export default function MailerLiteSender() {
       const template = templates.find(t => t.id === selectedTemplate)
       if (template) {
         setSubject(template.subject)
-        setContent(template.content?.html || template.html || '')
+        setContent(template.content?.html || '')
       }
     }
   }, [selectedTemplate, templates])

@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react'
 import {
   ExclamationTriangleIcon,
-  XCircleIcon,
   CheckCircleIcon,
 } from '@heroicons/react/24/outline'
 
@@ -158,6 +157,21 @@ export default function MailerLiteSender() {
     )
   }
 
+  if (errorMessage) {
+    return (
+      <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-200">
+        <h2 className="text-xl font-semibold mb-6 text-gray-900">
+          Sync Copper Contacts to MailerLite
+        </h2>
+        <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-700 flex items-start">
+          <ExclamationTriangleIcon className="h-5 w-5 mr-3 mt-0.5" />
+          <p>{errorMessage}</p>
+        </div>
+      </div>
+    )
+  }
+
+
   return (
     <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-200">
       <h2 className="text-xl font-semibold mb-6 text-gray-900">
@@ -167,12 +181,6 @@ export default function MailerLiteSender() {
         <div className="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-700 flex items-start">
           <CheckCircleIcon className="h-5 w-5 mr-3 mt-0.5" />
           <p>{successMessage}</p>
-        </div>
-      )}
-      {errorMessage && (
-        <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-700 flex items-start">
-          <ExclamationTriangleIcon className="h-5 w-5 mr-3 mt-0.5" />
-          <p>{errorMessage}</p>
         </div>
       )}
       <div className="space-y-4">
@@ -210,4 +218,30 @@ export default function MailerLiteSender() {
             id="mailerlite-group"
             value={selectedGroup || ''}
             onChange={(e) => setSelectedGroup(Number(e.target.value))}
-            className="mt-1 block w-full rounded-md border-gray-30
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+          >
+            <option value="" disabled>
+              Select a group...
+            </option>
+            {mailerLiteGroups.map((group) => (
+              <option key={group.id} value={group.id}>
+                {group.name} ({group.active_subscribers_count})
+              </option>
+            ))}
+          </select>
+        </div>
+        <button
+          onClick={handleSend}
+          disabled={isSending || !selectedTag || !selectedGroup}
+          className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+            isSending
+              ? 'bg-blue-300'
+              : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+          }`}
+        >
+          {isSending ? 'Sending...' : 'Sync Contacts'}
+        </button>
+      </div>
+    </div>
+  )
+}

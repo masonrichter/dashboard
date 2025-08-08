@@ -5,8 +5,14 @@ import { useEffect, useState } from 'react';
 import CampaignAnalytics from '../components/CampaignAnalytics';
 import DashboardSummary from '../components/DashboardSummary';
 
+type SummaryData = {
+  totalAUM: string;
+  totalCampaigns: number;
+  activeClients: number;
+};
+
 export default function AnalyticsPage() {
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<SummaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -14,10 +20,13 @@ export default function AnalyticsPage() {
     // Here you would fetch any necessary data for your analytics page
     const fetchData = async () => {
       try {
-        // Example of fetching data from an API route
-        // const response = await fetch('/api/analytics');
-        // const result = await response.json();
-        // setData(result);
+        // Mock data for now - replace with actual API call
+        const mockData: SummaryData = {
+          totalAUM: '$28,475,000',
+          totalCampaigns: 12,
+          activeClients: 127
+        };
+        setData(mockData);
       } catch (err) {
         setError("Failed to fetch analytics data.");
       } finally {
@@ -43,7 +52,7 @@ export default function AnalyticsPage() {
       
       {/* Example usage of your imported components */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <DashboardSummary />
+        {data && <DashboardSummary data={data} />}
         <CampaignAnalytics />
       </div>
       

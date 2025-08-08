@@ -4,12 +4,12 @@ import { useState, useEffect } from 'react'
 import { 
   ChartBarIcon, 
   CurrencyDollarIcon, 
-  TrendingUpIcon, 
   UserGroupIcon,
   CalendarIcon,
   ArrowUpIcon,
   ArrowDownIcon
 } from '@heroicons/react/24/outline'
+import { TrendingUpIcon } from '@heroicons/react/24/solid'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts'
 
 interface AUMData {

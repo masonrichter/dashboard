@@ -9,7 +9,7 @@ import {
   ArrowUpIcon,
   ArrowDownIcon
 } from '@heroicons/react/24/outline'
-import { TrendingUpIcon } from '@heroicons/react/24/solid'
+import { ArrowTrendingUpIcon } from '@heroicons/react/24/outline'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts'
 
 interface AUMData {
@@ -161,7 +161,7 @@ export default function AUMPage() {
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <div className="flex items-center">
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <TrendingUpIcon className="h-6 w-6 text-green-600" />
+              <ArrowTrendingUpIcon className="h-6 w-6 text-green-600" />
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Monthly Growth</p>

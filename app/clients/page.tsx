@@ -281,9 +281,13 @@ export default function ClientsPage() {
                   <label className="block">
                     <span className="text-gray-700">Details:</span>
                     <textarea name="details" value={editedModalContact.details || ''} onChange={handleModalChange} rows={3} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></textarea>
+                    <p className="text-xs text-gray-500 mt-1">Extra information added here will be synced to the Google Sheets "Clients" tab</p>
                   </label>
                   <div className="flex justify-end gap-2 mt-4">
-                    <button onClick={handleModalSave} className="bg-blue-500 text-white px-4 py-2 rounded text-sm font-medium">
+                    <button 
+                      onClick={handleModalSave} 
+                      className="bg-blue-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-600"
+                    >
                       Save
                     </button>
                     <button onClick={() => setEditingModal(false)} className="bg-gray-200 text-gray-800 px-4 py-2 rounded text-sm font-medium">
@@ -301,6 +305,9 @@ export default function ClientsPage() {
                   <p><strong>City:</strong> {selectedContact.city || 'N/A'}</p>
                   <p><strong>Last Modified:</strong> {selectedContact.lastModified || 'N/A'}</p>
                   <p><strong>Details:</strong> {selectedContact.details || 'N/A'}</p>
+                  {selectedContact.details && (
+                    <p className="text-xs text-gray-500 mt-1">✓ Details synced to Google Sheets</p>
+                  )}
                   {selectedContact.websites && selectedContact.websites.length > 0 && (
                     <div>
                       <strong>Websites:</strong>

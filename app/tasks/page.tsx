@@ -9,7 +9,7 @@ export default function Tasks() {
           Manage your tasks and to-dos efficiently.
         </p>
       </div>
-      <TaskList />
+      <TaskList accessToken="" />
     </div>
   )
 } 

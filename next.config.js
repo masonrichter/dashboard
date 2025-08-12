@@ -2,6 +2,13 @@
 const nextConfig = {
   images: {
     domains: ['localhost'],
+    unoptimized: true,
+  },
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  eslint: {
+    ignoreDuringBuilds: false,
   },
 }
 

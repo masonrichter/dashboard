@@ -53,6 +53,8 @@ A comprehensive client management dashboard built with Next.js, TypeScript, and 
 
 ## 📦 Installation
 
+### Local Development
+
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
@@ -65,28 +67,28 @@ A comprehensive client management dashboard built with Next.js, TypeScript, and 
    ```
 
 3. **Set up environment variables**
-   ```bash
-   cp env.example .env.local
-   ```
-   
-   Edit `.env.local` and add your API keys:
+   Create a `.env.local` file in the root directory and add your API keys:
    ```env
    # Copper CRM API
    COPPER_API_KEY=your_copper_api_key_here
-   COPPER_BASE_URL=https://api.copper.com
+   COPPER_BASE_URL=https://api.copper.com/developer_api/v1
+   COPPER_USER_EMAIL=your_copper_user_email@example.com
 
    # MailerLite API
    MAILERLITE_API_KEY=your_mailerlite_api_key_here
 
    # Buffer API
    BUFFER_ACCESS_TOKEN=your_buffer_access_token_here
-   BUFFER_CLIENT_ID=your_buffer_client_id_here
-   BUFFER_CLIENT_SECRET=your_buffer_client_secret_here
 
-   # Google Calendar API
+   # Google OAuth Configuration
    GOOGLE_CLIENT_ID=your_google_client_id_here
    GOOGLE_CLIENT_SECRET=your_google_client_secret_here
-   GOOGLE_REDIRECT_URI=http://localhost:3000/api/auth/google/callback
+   GOOGLE_REDIRECT_URI=http://localhost:3000/auth/callback
+
+   # Next.js Public Variables
+   NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id_here
+   NEXT_PUBLIC_GOOGLE_REDIRECT_URI=http://localhost:3000/auth/callback
+   NEXT_PUBLIC_BUFFER_ACCESS_TOKEN=your_buffer_access_token_here
    ```
 
 4. **Run the development server**
@@ -96,6 +98,20 @@ A comprehensive client management dashboard built with Next.js, TypeScript, and 
 
 5. **Open your browser**
    Navigate to [http://localhost:3000](http://localhost:3000)
+
+### Production Deployment (Vercel)
+
+For production deployment to Vercel, see the [Vercel Deployment Guide](./VERCEL_DEPLOYMENT.md) for detailed instructions.
+
+**Quick Steps:**
+1. Push your code to a Git repository
+2. Connect your repository to Vercel
+3. Set up environment variables in Vercel dashboard
+4. Deploy!
+
+**Required Environment Variables for Vercel:**
+- All variables listed above, but update redirect URIs to your Vercel domain
+- Example: `GOOGLE_REDIRECT_URI=https://your-app.vercel.app/auth/callback`
 
 ## 🔧 API Setup
 

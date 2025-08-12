@@ -560,13 +560,14 @@ export async function createAndSendCampaignFromTemplate(
     // Create the campaign data
     const campaignData: CreateCampaignData = {
       name: campaignName,
+      type: 'regular',
       subject: subject,
       from_name: template.from_name || 'Glenn Financial Services',
       from_email: template.from_email || 'noreply@glennfinancial.com',
       reply_to: template.reply_to || 'support@glennfinancial.com',
       content: {
-        html: template.content?.html || template.html || '',
-        plain: template.content?.plain || template.plain_text || ''
+        html: template.content?.html || '',
+        plain: template.content?.plain || ''
       },
       groups: groupIds,
       send_time: sendTime

@@ -11,7 +11,7 @@ export default function Layout({ children }: LayoutProps) {
     <div className="min-h-screen bg-gray-50">
       <Header />
       
-      <main className="py-8 min-h-screen">
+      <main className="pb-8 min-h-screen">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {children}
         </div>

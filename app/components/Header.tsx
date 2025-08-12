@@ -1,7 +1,6 @@
 'use client'
 
 import { Fragment } from 'react'
-import { BellIcon } from '@heroicons/react/24/outline'
 import { 
   HomeIcon, 
   UsersIcon, 
@@ -9,7 +8,6 @@ import {
   EnvelopeIcon,
   ShareIcon, 
   ChartBarIcon, 
-  CheckCircleIcon,
   TagIcon,
   CurrencyDollarIcon
 } from '@heroicons/react/24/outline'
@@ -25,7 +23,6 @@ const navigation = [
   { name: 'Campaigns', href: '/mailerlite/campaign', icon: EnvelopeIcon }, 
   { name: 'Social Media', href: '/buffer', icon: ShareIcon },
   { name: 'Analytics', href: '/analytics', icon: ChartBarIcon },
-  { name: 'Tasks', href: '/tasks', icon: CheckCircleIcon },
 ]
 
 export default function Header() {
@@ -40,7 +37,7 @@ export default function Header() {
           <div className="flex items-center gap-x-4">
             {/* Logo */}
             <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900 tracking-tight">Glenn Dashboard</h1>
+              <h1 className="text-xl font-bold text-gray-900 tracking-tight">Avista Network Dashboard</h1>
             </div>
           </div>
 
@@ -79,15 +76,7 @@ export default function Header() {
               </span>
             </div>
 
-            {/* Notifications */}
-            <button
-              type="button"
-              className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <span className="sr-only">View notifications</span>
-              <BellIcon className="h-5 w-5" aria-hidden="true" />
-              <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
-            </button>
+
 
             {/* Profile */}
             <div className="flex items-center gap-x-3 pl-4 border-l border-gray-200">

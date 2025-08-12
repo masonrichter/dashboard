@@ -10,7 +10,6 @@ import {
   EnvelopeIcon, // <-- This is the correct icon
   ShareIcon, 
   ChartBarIcon, 
-  CheckCircleIcon,
   TagIcon,
   CurrencyDollarIcon
 } from '@heroicons/react/24/outline'
@@ -25,7 +24,6 @@ const navigation = [
   { name: 'Campaigns', href: '/mailerlite/campaign', icon: EnvelopeIcon }, 
   { name: 'Social Media', href: '/buffer', icon: ShareIcon },
   { name: 'Analytics', href: '/analytics', icon: ChartBarIcon },
-  { name: 'Tasks', href: '/tasks', icon: CheckCircleIcon },
 ]
 
 interface SidebarProps {

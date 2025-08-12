@@ -1,103 +1,90 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
-interface Client {
-  id: number
+interface TopPerformer {
   name: string
-  email: string
-  company: string
-  tags: string[]
-  lastModified: string
+  aum: number
+  growth: number
+  performance: number
 }
 
-const mockClients: Client[] = [
-  {
-    id: 1,
-    name: 'John Smith',
-    email: 'john@example.com',
-    company: 'Smith Corp',
-    tags: ['High Value', 'Retirement Planning'],
-    lastModified: '2024-01-20T10:30:00Z',
-  },
-  {
-    id: 2,
-    name: 'Sarah Johnson',
-    email: 'sarah@example.com',
-    company: 'Johnson LLC',
-    tags: ['Tax Planning', 'Estate Planning'],
-    lastModified: '2024-01-18T14:15:00Z',
-  },
-  {
-    id: 3,
-    name: 'Mike Wilson',
-    email: 'mike@example.com',
-    company: 'Wilson Inc',
-    tags: ['Prospect', 'High Value'],
-    lastModified: '2024-01-15T09:45:00Z',
-  },
-  {
-    id: 4,
-    name: 'Emily Davis',
-    email: 'emily@example.com',
-    company: 'Davis Holdings',
-    tags: ['Real Estate', 'Prospect'],
-    lastModified: '2024-01-22T11:00:00Z',
-  },
-  {
-    id: 5,
-    name: 'Chris Evans',
-    email: 'chris@example.com',
-    company: 'Evans & Co.',
-    tags: ['High Value', 'Tax Planning'],
-    lastModified: '2024-01-25T16:30:00Z',
-  },
-  {
-    id: 6,
-    name: 'Jessica Lee',
-    email: 'jessica@example.com',
-    company: 'Lee Solutions',
-    tags: ['Retirement Planning'],
-    lastModified: '2024-01-28T09:00:00Z',
-  },
-  {
-    id: 7,
-    name: 'David Brown',
-    email: 'david@example.com',
-    company: 'Brown Ventures',
-    tags: ['Prospect', 'High Value'],
-    lastModified: '2024-01-30T14:00:00Z',
-  },
+// Fallback mock data in case API fails
+const mockTopPerformers: TopPerformer[] = [
+  { name: 'John Smith', aum: 2150000, growth: 12.5, performance: 8.7 },
+  { name: 'Sarah Johnson', aum: 1890000, growth: 9.3, performance: 7.2 },
+  { name: 'Michael Brown', aum: 1650000, growth: 15.1, performance: 11.4 },
+  { name: 'Emily Davis', aum: 1420000, growth: 6.8, performance: 5.9 },
+  { name: 'David Wilson', aum: 1280000, growth: 8.9, performance: 6.3 },
 ]
-
-// Function to shuffle an array
-const shuffleArray = (array: any[]) => {
-  const newArray = [...array];
-  for (let i = newArray.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-  }
-  return newArray;
-};
 
 export default function TopClientsChart() {
   const [selectedTimeframe, setSelectedTimeframe] = useState('1M')
-  
-  // Get 5 random clients for the chart
-  const randomClients = shuffleArray(mockClients).slice(0, 5)
-  
-  // Convert to chart data format
-  const chartData = randomClients.map((client, index) => ({
-    name: client.name,
-    value: Math.floor(Math.random() * 100) + 20, // Random value for demo
-    rank: index + 1
+  const [topPerformers, setTopPerformers] = useState<TopPerformer[]>(mockTopPerformers)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchTopPerformers() {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/aum')
+        if (!response.ok) {
+          throw new Error('Failed to fetch AUM data')
+        }
+        const data = await response.json()
+        setTopPerformers(data.topPerformers || mockTopPerformers)
+      } catch (err) {
+        console.error('Error fetching top performers:', err)
+        setError(err instanceof Error ? err.message : 'Failed to fetch data')
+        setTopPerformers(mockTopPerformers)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchTopPerformers()
+  }, [])
+
+  // Get top 5 performers for the chart
+  const chartData = topPerformers.slice(0, 5).map((performer, index) => ({
+    name: performer.name,
+    value: performer.aum / 1000000, // Convert to millions for display
+    rank: index + 1,
+    growth: performer.growth
   }))
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Top Clients</h3>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-3 text-gray-600">Loading top performers...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Top Clients</h3>
+        </div>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-800 text-sm">Failed to load top performers data</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Top Clients</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Top Clients by AUM</h3>
         <select
           value={selectedTimeframe}
           onChange={(e) => setSelectedTimeframe(e.target.value)}
@@ -115,13 +102,16 @@ export default function TopClientsChart() {
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="name" />
           <YAxis />
-          <Tooltip />
+          <Tooltip 
+            formatter={(value: any) => [`$${value}M`, 'AUM']}
+            labelFormatter={(label) => `${label}`}
+          />
           <Bar dataKey="value" fill="#3B82F6" />
         </BarChart>
       </ResponsiveContainer>
       
       <div className="mt-4 text-sm text-gray-500">
-        <p>Showing {chartData.length} top performing clients</p>
+        <p>Showing {chartData.length} top performing clients by AUM</p>
       </div>
     </div>
   )

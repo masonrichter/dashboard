@@ -13,13 +13,13 @@ import { CheckCircleIcon as CheckCircleSolidIcon } from '@heroicons/react/24/sol
 import { TaskItem, getUpcomingTasks, markTaskAsCompleted, createTask } from '@/lib/google'
 
 interface TaskListProps {
-  accessToken: string
+  accessToken?: string
   calendarId?: string
   maxResults?: number
 }
 
 export default function TaskList({ 
-  accessToken, 
+  accessToken = '', 
   calendarId = 'primary', 
   maxResults = 20 
 }: TaskListProps) {
@@ -38,6 +38,8 @@ export default function TaskList({
   useEffect(() => {
     if (accessToken) {
       fetchTasks()
+    } else {
+      setLoading(false)
     }
   }, [accessToken, calendarId, maxResults])
 
@@ -137,6 +139,18 @@ export default function TaskList({
         >
           Try again
         </button>
+      </div>
+    )
+  }
+
+  if (!accessToken) {
+    return (
+      <div className="text-center py-8">
+        <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Google Calendar Integration Required</h3>
+        <p className="text-gray-600">
+          Please connect your Google Calendar to view and manage tasks.
+        </p>
       </div>
     )
   }

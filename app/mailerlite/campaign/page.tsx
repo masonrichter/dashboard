@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { EnvelopeIcon, MagnifyingGlassIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
+import { EnvelopeIcon, MagnifyingGlassIcon, ChevronDownIcon, EyeIcon, CursorArrowRaysIcon } from '@heroicons/react/24/outline'
 
 type Contact = {
   id: number
@@ -16,12 +16,42 @@ type MLGroup = {
   total: number
 }
 
+type Campaign = {
+  id: string
+  name: string
+  subject: string
+  status: string
+  sent_at: string
+  recipients_count: number
+  opened_count: number
+  clicked_count: number
+  opened_rate: number
+  clicked_rate: number
+}
+
+type Subscriber = {
+  id: string
+  email: string
+  name: string
+  status: string
+  sent: number
+  opens_count: number
+  clicks_count: number
+  open_rate: number
+  click_rate: number
+  subscribed_at: string
+  created_at: string
+  updated_at: string
+  fields: Record<string, any>
+}
+
 type ContactsByTag = Record<string, Contact[]>
 
 export default function MailerPage() {
   // Data
   const [contacts, setContacts] = useState<Contact[]>([])
   const [groups, setGroups] = useState<MLGroup[]>([])
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
 
   // UI state
   const [loading, setLoading] = useState(true)
@@ -36,6 +66,8 @@ export default function MailerPage() {
   const [expandedTags, setExpandedTags] = useState<string[]>([])
   const [sending, setSending] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
 
+
+
   // Load all data
   useEffect(() => {
     let mounted = true
@@ -43,7 +75,7 @@ export default function MailerPage() {
       try {
         setLoading(true)
 
-        const [contactsRes, groupsRes] = await Promise.all([
+        const [contactsRes, groupsRes, campaignsRes] = await Promise.all([
           fetch('/api/copper/people'),
           fetch('https://connect.mailerlite.com/api/groups', {
             headers: {
@@ -51,11 +83,14 @@ export default function MailerPage() {
               'Content-Type': 'application/json',
               'Accept': 'application/json'
             }
-          })
+          }),
+          // Use dedicated endpoint that returns sent campaigns
+          fetch('/api/mailerlite/campaigns')
         ])
 
         if (!contactsRes.ok) throw new Error('Failed to fetch Copper contacts')
         if (!groupsRes.ok) throw new Error('Failed to fetch MailerLite groups')
+        if (!campaignsRes.ok) throw new Error('Failed to fetch MailerLite campaigns')
 
         const contactsData: Contact[] = await contactsRes.json()
         const groupsData = (await groupsRes.json()).data.map((group: any) => ({
@@ -64,9 +99,29 @@ export default function MailerPage() {
           total: group.subscribers_count
         }))
 
+        const rawCampaigns = await campaignsRes.json()
+        console.log('Raw campaigns from API:', rawCampaigns)
+        const campaignsData: Campaign[] = (rawCampaigns || []).map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          subject: c.subject || 'No subject',
+          status: c.status,
+          sent_at: c.finished_at || c.send_time || '',
+          recipients_count: c.recipients_count ?? 0,
+          opened_count: c.opened_count ?? 0,
+          clicked_count: c.clicked_count ?? 0,
+          opened_rate: c.opened_rate ?? 0,
+          clicked_rate: c.clicked_rate ?? 0,
+        }))
+        console.log('Normalized campaigns:', campaignsData)
+
         if (!mounted) return
+        console.log('Setting campaigns:', campaignsData.length, 'campaigns')
         setContacts(contactsData)
         setGroups(groupsData)
+        setCampaigns(campaignsData)
+
+
       } catch (e: any) {
         if (!mounted) return
         setError(e.message || 'Failed to load data')
@@ -77,6 +132,8 @@ export default function MailerPage() {
     load()
     return () => { mounted = false }
   }, [])
+
+
 
   // Group contacts by tag for the left panel
   const contactsByTag: ContactsByTag = useMemo(() => {
@@ -129,6 +186,8 @@ export default function MailerPage() {
     )
   }
 
+
+
   // Send via the Make.com webhook
   const handleSend = async () => {
     if (!groupName || selectedContactIds.length === 0) {
@@ -165,6 +224,22 @@ export default function MailerPage() {
       setSending('error')
       alert(`Send failed: ${e.message}`)
     }
+  }
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'Not sent'
+    try {
+      // Handle the date format from MailerLite API (e.g., "2025-08-04 03:16:43")
+      const date = new Date(dateString)
+      return date.toLocaleDateString()
+    } catch {
+      return 'Invalid date'
+    }
+  }
+
+  const formatPercentage = (rate: number) => {
+    // The API returns rates as decimals (e.g., 1.018 = 101.8%)
+    return `${(rate * 100).toFixed(1)}%`
   }
 
   if (loading) return <div className="p-6">Loading…</div>
@@ -259,19 +334,19 @@ export default function MailerPage() {
             </button>
 
             {sending === 'error' && <p className="text-sm text-red-500">Failed to create group.</p>}
-{sending === 'success' && (
-  <div className="mt-4">
-    <p className="text-sm text-green-600">Group created and subscribers added successfully!</p>
-    <a 
-      href="https://dashboard.mailerlite.com/campaigns/status/draft" 
-      target="_blank" 
-      rel="noopener noreferrer"
-      className="mt-2 inline-flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors duration-200"
-    >
-      <span>Click here to create your campaign in MailerLite</span>
-    </a>
-  </div>
-)}
+            {sending === 'success' && (
+              <div className="mt-4">
+                <p className="text-sm text-green-600">Group created and subscribers added successfully!</p>
+                <a 
+                  href="https://dashboard.mailerlite.com/campaigns/status/draft" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors duration-200"
+                >
+                  <span>Click here to create your campaign in MailerLite</span>
+                </a>
+              </div>
+            )}
           </div>
         </div>
       </div>

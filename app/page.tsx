@@ -44,6 +44,8 @@ const shuffleArray = (array: DisplayContact[]) => {
 
 export default function HomePage() {
   const [contacts, setContacts] = useState<DisplayContact[]>([])
+  const [campaigns, setCampaigns] = useState<any[]>([])
+  const [aumData, setAumData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -60,8 +62,34 @@ export default function HomePage() {
     return response.json()
   }, [])
 
+  const fetchCampaignsFromAPI = useCallback(async () => {
+    const response = await fetch('/api/mailerlite/campaigns', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    return response.json()
+  }, [])
+
+  const fetchAUMFromAPI = useCallback(async () => {
+    const response = await fetch('/api/aum', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    return response.json()
+  }, [])
+
   useEffect(() => {
-    async function getClientData() {
+    async function getData() {
       const storedData = localStorage.getItem('recentClientsData');
       const now = new Date().getTime();
 
@@ -69,31 +97,44 @@ export default function HomePage() {
         const { clients, timestamp } = JSON.parse(storedData);
         if (!isDataStale(timestamp)) {
           setContacts(clients);
-          setLoading(false);
-          return;
         }
       }
 
       try {
-        const data = await fetchContactsFromAPI();
-        const shuffledClients = shuffleArray(data);
-        localStorage.setItem('recentClientsData', JSON.stringify({
-          clients: shuffledClients,
-          timestamp: now,
-        }));
-        setContacts(shuffledClients);
+        // Fetch contacts, campaigns, and AUM data
+        const [contactsData, campaignsData, aumData] = await Promise.all([
+          fetchContactsFromAPI(),
+          fetchCampaignsFromAPI(),
+          fetchAUMFromAPI()
+        ]);
+
+        // Process contacts
+        if (!storedData || isDataStale(JSON.parse(storedData).timestamp)) {
+          const shuffledClients = shuffleArray(contactsData);
+          localStorage.setItem('recentClientsData', JSON.stringify({
+            clients: shuffledClients,
+            timestamp: now,
+          }));
+          setContacts(shuffledClients);
+        }
+
+        // Process campaigns
+        setCampaigns(campaignsData);
+        
+        // Process AUM data
+        setAumData(aumData);
       } catch (err) {
-        setError('Failed to fetch contacts from Copper CRM.');
+        setError('Failed to fetch data.');
       } finally {
         setLoading(false);
       }
     }
-    getClientData();
-  }, [fetchContactsFromAPI]);
+    getData();
+  }, [fetchContactsFromAPI, fetchCampaignsFromAPI, fetchAUMFromAPI]);
 
   const dashboardData = {
-    totalAUM: '$100,000,000',
-    totalCampaigns: 0,
+    totalAUM: aumData ? `$${(aumData.totalAUM / 1000000).toFixed(1)}M` : '$100,000,000',
+    totalCampaigns: campaigns.length,
     activeClients: contacts.length,
     socialEngagement: 0,
   }
@@ -167,11 +208,11 @@ export default function HomePage() {
                 </div>
                 <p className="text-base font-medium text-gray-900">Add New Client</p>
               </a>
-              <Link href="/mailerlite" className="flex items-center p-4 border border-gray-200 rounded-xl hover:border-green-300 hover:bg-green-50 transition-all duration-200 w-full group">
+              <Link href="/mailerlite/campaign" className="flex items-center p-4 border border-gray-200 rounded-xl hover:border-green-300 hover:bg-green-50 transition-all duration-200 w-full group">
                 <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-4 group-hover:bg-green-200 transition-colors">
                   <EnvelopeIcon className="h-6 w-6 text-green-600" />
                 </div>
-                <p className="text-base font-medium text-gray-900">Send Email</p>
+                <p className="text-base font-medium text-gray-900">Send Campaign</p>
               </Link>
               <Link href="/buffer" className="flex items-center p-4 border border-gray-200 rounded-xl hover:border-purple-300 hover:bg-purple-50 transition-all duration-200 w-full group">
                 <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-4 group-hover:bg-purple-200 transition-colors">

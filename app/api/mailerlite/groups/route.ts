@@ -70,7 +70,11 @@ export async function GET() {
     const groups = res.data.data.map((group: any) => ({
       id: group.id,
       name: group.name,
-      total: group.subscribers_count,
+      total: group.total || group.subscribers_count || 0,
+      active: group.active || 0,
+      unsubscribed: group.unsubscribed || 0,
+      unconfirmed: group.unconfirmed || 0,
+      bounced: group.bounced || 0,
     }));
 
     return NextResponse.json(groups);

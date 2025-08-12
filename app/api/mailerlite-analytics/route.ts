@@ -71,9 +71,9 @@ export async function GET(request: NextRequest) {
     };
 
     // Calculate subscriber metrics from groups data
-    const totalSubscribers = groupsAndSegments.groups.reduce((sum, group) => sum + (group.active_count || 0) + (group.unsubscribed_count || 0) + (group.unconfirmed_count || 0) + (group.bounced_count || 0), 0);
-    const activeSubscribers = groupsAndSegments.groups.reduce((sum, group) => sum + (group.active_count || 0), 0);
-    const unsubscribedCount = groupsAndSegments.groups.reduce((sum, group) => sum + (group.unsubscribed_count || 0), 0);
+    const totalSubscribers = groupsAndSegments.groups.reduce((sum, group) => sum + (group.active || 0) + (group.unsubscribed || 0) + (group.unconfirmed || 0) + (group.bounced || 0), 0);
+    const activeSubscribers = groupsAndSegments.groups.reduce((sum, group) => sum + (group.active || 0), 0);
+    const unsubscribedCount = groupsAndSegments.groups.reduce((sum, group) => sum + (group.unsubscribed || 0), 0);
 
     // Get recent campaign performance (last 5 campaigns)
     const recentCampaignPerformance = campaigns.slice(0, 5).map((campaign) => {
@@ -138,11 +138,11 @@ export async function GET(request: NextRequest) {
       groups: groupsWithDetails.map(group => ({
         id: group.id,
         name: group.name,
-        total: group.active_count + group.unsubscribed_count + group.unconfirmed_count + group.bounced_count,
-        active: group.active_count || 0,
-        unsubscribed: group.unsubscribed_count || 0,
-        unconfirmed: group.unconfirmed_count || 0,
-        bounced: group.bounced_count || 0
+        total: group.active + group.unsubscribed + group.unconfirmed + group.bounced,
+        active: group.active || 0,
+        unsubscribed: group.unsubscribed || 0,
+        unconfirmed: group.unconfirmed || 0,
+        bounced: group.bounced || 0
       })),
       
       // Campaign status breakdown

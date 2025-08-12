@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       ]
 
       await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_SPREADSHEET_ID}/values/Clients!A1:L1?key=${GOOGLE_SHEETS_API_KEY}`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_SPREADSHEET_ID}/values/Clients!A1:L1?key=${GOOGLE_SHEETS_API_KEY}&valueInputOption=RAW`,
         {
           method: 'PUT',
           headers: {
@@ -60,10 +60,7 @@ export async function POST(request: NextRequest) {
           },
           body: JSON.stringify({
             values: [headers]
-          }),
-          params: {
-            valueInputOption: 'RAW'
-          }
+          })
         }
       )
     }

@@ -16,7 +16,7 @@ export async function GET(
     const campaignId = params.id;
 
     // First, try to get campaign details to understand the campaign
-    let campaignDetails;
+    let campaignDetails: any = null;
     try {
       const campaignResponse = await axios.get(`${MAILERLITE_API_URL}/campaigns/${campaignId}`, {
         headers: {

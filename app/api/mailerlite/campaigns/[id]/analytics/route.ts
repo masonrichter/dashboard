@@ -34,7 +34,7 @@ export async function GET(
     const campaign = campaignResponse.data.data;
 
     // Fetch campaign reports/analytics
-    let analytics = {};
+    let analytics: any = {};
     try {
       const analyticsResponse = await mailerliteApi.get(`/campaigns/${campaignId}/reports`);
       if (analyticsResponse.data?.data) {

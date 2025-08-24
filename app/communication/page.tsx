@@ -88,8 +88,8 @@ export default function CommunicationPage() {
 
   // Social Media form fields
   const [socialContent, setSocialContent] = useState<string>('')
-  const [socialPlatforms, setSocialPlatforms] = useState<('linkedin' | 'twitter' | 'facebook')[]>(['linkedin'])
-  const [socialImageFile, setSocialImageFile] = useState<File | null>(null)
+  const [socialPlatforms, setSocialPlatforms] = useState<('linkedin' | 'twitter' | 'facebook')[]>(['linkedin', 'twitter', 'facebook'])
+  const [socialImageUrl, setSocialImageUrl] = useState<string>('')
   const [socialScheduleDate, setSocialScheduleDate] = useState<string>('')
 
   // Copper selection
@@ -456,11 +456,6 @@ export default function CommunicationPage() {
       return
     }
 
-    if (socialPlatforms.length === 0) {
-      alert('Please select at least one platform.')
-      return
-    }
-
     if (!socialScheduleDate) {
       alert('Please select a schedule date and time.')
       return
@@ -480,30 +475,28 @@ export default function CommunicationPage() {
         facebook: '67357f9fda2e3cb64c93a3d9'
       }
 
-      const formData = new FormData()
-      formData.append('content', socialContent)
-      formData.append('scheduleDate', socialScheduleDate)
-      formData.append('scheduled', 'true')
-      formData.append('timestamp', new Date().toISOString())
-      formData.append('from', 'Glenn Financial Services Dashboard')
-      formData.append('linkedin', String(platformFlags.linkedin))
-      formData.append('twitter', String(platformFlags.twitter))
-      formData.append('facebook', String(platformFlags.facebook))
-      formData.append('platforms', JSON.stringify(socialPlatforms))
-      formData.append('profileIds', JSON.stringify(platformProfileIds))
-      formData.append('selectedProfileIds', JSON.stringify(
-        socialPlatforms.map(platform => platformProfileIds[platform])
-      ))
-
-      if (socialImageFile) {
-        const filename = socialImageFile.name || 'upload.jpg'
-        formData.append('image', socialImageFile, filename)
-        formData.append('filename', filename)
+      // Send JSON data instead of FormData
+      const postData = {
+        text: socialContent,
+        image_url: socialImageUrl || '',
+        linkedin: platformFlags.linkedin,
+        twitter: platformFlags.twitter,
+        facebook: platformFlags.facebook,
+        scheduleDate: socialScheduleDate,
+        scheduled: true,
+        timestamp: new Date().toISOString(),
+        from: 'Glenn Financial Services Dashboard',
+        platforms: socialPlatforms,
+        profileIds: platformProfileIds,
+        selectedProfileIds: socialPlatforms.map(platform => platformProfileIds[platform])
       }
 
       const response = await fetch('/api/social', {
         method: 'POST',
-        body: formData
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(postData)
       })
 
       if (!response.ok) {
@@ -515,26 +508,18 @@ export default function CommunicationPage() {
       
       setSending('success')
       
-      alert(`Social media post scheduled successfully for ${socialPlatforms.join(', ')}!\n\nScheduled for: ${socialScheduleDate}\n\nMake.com webhook response: ${result}`)
+      alert(`Social media post scheduled successfully for LinkedIn, Twitter/X, and Facebook!\n\nScheduled for: ${socialScheduleDate}\n\nMake.com webhook response: ${result}`)
       
       // Clear form
       setSocialContent('')
-      setSocialImageFile(null)
-      setSocialPlatforms(['linkedin'])
+      setSocialImageUrl('')
+      setSocialPlatforms(['linkedin', 'twitter', 'facebook'])
       setSocialScheduleDate('')
       
     } catch (e: any) {
       console.error('Social post failed:', e)
       setSending('error')
       alert(`Failed to post to social media: ${e.message}`)
-    }
-  }
-
-  // Handle image file upload
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      setSocialImageFile(file)
     }
   }
 
@@ -1173,39 +1158,13 @@ export default function CommunicationPage() {
               </h2>
 
               <div className="flex-1 flex flex-col space-y-6">
-                {/* Platform Selection */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Platforms</label>
-                  <div className="space-y-3">
-                    {(['linkedin', 'twitter', 'facebook'] as const).map((platform) => (
-                      <label key={platform} className="flex items-center p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-all duration-300">
-                        <input
-                          type="checkbox"
-                          checked={socialPlatforms.includes(platform)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSocialPlatforms([...socialPlatforms, platform])
-                            } else {
-                              setSocialPlatforms(socialPlatforms.filter(p => p !== platform))
-                            }
-                          }}
-                          className="mr-3 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                        />
-                        <div className="flex items-center">
-                          <span className="text-2xl mr-3">
-                            {platform === 'linkedin' ? '💼' : platform === 'twitter' ? '🐦' : '📘'}
-                          </span>
-                          <span className="text-sm font-medium text-gray-700 capitalize">{platform}</span>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                  {socialPlatforms.length === 0 && (
-                    <p className="mt-2 text-sm text-red-500">Please select at least one platform</p>
-                  )}
+                {/* Platform Information */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-blue-800 mb-2">📱 Automatic Platform Distribution</h3>
+                  <p className="text-sm text-blue-700">
+                    All posts automatically go to LinkedIn, Twitter/X, and Facebook
+                  </p>
                 </div>
-
-
 
                 {/* Post Content */}
                 <div>
@@ -1222,21 +1181,17 @@ export default function CommunicationPage() {
                 {/* Image Section */}
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Attach Image File</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Attach Image URL</label>
                     <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0]
-                        if (file) {
-                          setSocialImageFile(file)
-                        }
-                      }}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-green-200 focus:border-green-500 transition-all duration-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                      type="text"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-green-200 focus:border-green-500 transition-all duration-300"
+                      placeholder="Enter image URL (e.g., https://example.com/image.jpg)"
+                      value={socialImageUrl}
+                      onChange={(e) => setSocialImageUrl(e.target.value)}
                     />
-                    {socialImageFile && (
+                    {socialImageUrl && (
                       <p className="text-sm text-green-600 mt-2">
-                        ✓ File selected: {socialImageFile.name}
+                        ✓ Image URL: {socialImageUrl}
                       </p>
                     )}
                   </div>
@@ -1264,7 +1219,6 @@ export default function CommunicationPage() {
                   disabled={
                     sending === 'loading' || 
                     !socialContent.trim() ||
-                    socialPlatforms.length === 0 ||
                     !socialScheduleDate
                   }
                   className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white py-3 px-6 rounded-xl font-semibold hover:from-green-600 hover:to-emerald-600 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
@@ -1279,7 +1233,7 @@ export default function CommunicationPage() {
                       <ShareIcon className="h-5 w-5" />
                       <span>
                         Schedule Post
-                        <span className="text-xs block">({socialPlatforms.join(', ')})</span>
+                        <span className="text-xs block">(LinkedIn, Twitter/X, Facebook)</span>
                       </span>
                     </>
                   )}
@@ -1311,9 +1265,8 @@ export default function CommunicationPage() {
                 <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm font-medium text-gray-700">Platform</span>
-                    <span className="text-lg font-bold text-green-600 capitalize">{socialPlatforms.join(', ')}</span>
+                    <span className="text-lg font-bold text-green-600">LinkedIn, Twitter/X, Facebook</span>
                   </div>
-
                 </div>
 
                 <div className="flex-1 bg-white rounded-xl border border-gray-200 p-6">
@@ -1333,10 +1286,10 @@ export default function CommunicationPage() {
                     <div className="text-gray-400 italic">Your post content will appear here...</div>
                   )}
                   
-                  {socialImageFile && (
+                  {socialImageUrl && (
                     <div className="mt-4">
                       <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg text-center text-gray-500">
-                        📷 File selected: {socialImageFile.name}
+                        📷 Image URL: {socialImageUrl}
                       </div>
                     </div>
                   )}

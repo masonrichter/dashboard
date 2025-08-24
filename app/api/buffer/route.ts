@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   try {
-    const { postContent, scheduledDate, platforms, media } = await req.json()
+    const { postContent, scheduledDate, platforms, media, linkedin, instagram, facebook } = await req.json()
 
     // NOTE: Replace this URL with your actual Make.com webhook URL
     const makeWebhookUrl = 'https://hook.us2.make.com/qhqg2pvypyxucfr4hiuor1b3gghcubn8'
@@ -12,6 +12,9 @@ export async function POST(req: NextRequest) {
       scheduledDate,
       platforms,
       media,
+      linkedin: Boolean(linkedin),
+      instagram: Boolean(instagram),
+      facebook: Boolean(facebook),
     }
 
     const makeResponse = await fetch(makeWebhookUrl, {

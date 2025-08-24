@@ -94,8 +94,6 @@ export default function AnalyticsPage() {
   const [mailerLiteData, setMailerLiteData] = useState<MailerLiteAnalyticsData | null>(null);
   const [mailerLiteLoading, setMailerLiteLoading] = useState(true);
   const [mailerLiteError, setMailerLiteError] = useState<string | null>(null);
-  const [groupsPage, setGroupsPage] = useState(1);
-  const groupsPerPage = 6;
 
   // GA removed
 
@@ -187,7 +185,7 @@ export default function AnalyticsPage() {
         ) : mailerLiteData ? (
           <>
             {/* MailerLite Key Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                 <div className="flex items-center">
                   <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -196,18 +194,6 @@ export default function AnalyticsPage() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-500">Total Campaigns</p>
                     <p className="text-2xl font-bold text-gray-900">{formatNumber(mailerLiteData.performance.totalCampaigns)}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <div className="flex items-center">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <UsersIcon className="h-6 w-6 text-green-600" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">Total Subscribers</p>
-                    <p className="text-2xl font-bold text-gray-900">{formatNumber(mailerLiteData.subscribers.total)}</p>
                   </div>
                 </div>
               </div>
@@ -235,54 +221,27 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Campaign Performance and Subscriber Stats */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Campaign Performance</h3>
-                <div className="space-y-4">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Total Sent</span>
-                    <span className="text-sm font-semibold">{formatNumber(mailerLiteData.performance.totalSent)}</span>
+                <div className="flex items-center">
+                  <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                    <UsersIcon className="h-6 w-6 text-red-600" />
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Total Opens</span>
-                    <span className="text-sm font-semibold">{formatNumber(mailerLiteData.performance.totalOpens)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Total Clicks</span>
-                    <span className="text-sm font-semibold">{formatNumber(mailerLiteData.performance.totalClicks)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Total Unsubscribes</span>
-                    <span className="text-sm font-semibold">{formatNumber(mailerLiteData.performance.totalUnsubscribes)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Total Bounces</span>
-                    <span className="text-sm font-semibold">{formatNumber(mailerLiteData.performance.totalBounces)}</span>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-500">Avg Unsub Rate</p>
+                    <p className="text-2xl font-bold text-gray-900">{formatPercentage(mailerLiteData.engagementTrends.averageUnsubscribeRate)}</p>
                   </div>
                 </div>
               </div>
 
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Subscriber Overview</h3>
-                <div className="space-y-4">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Active Subscribers</span>
-                    <span className="text-sm font-semibold">{formatNumber(mailerLiteData.subscribers.active)}</span>
+                <div className="flex items-center">
+                  <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                    <GlobeAltIcon className="h-6 w-6 text-yellow-600" />
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Unsubscribed</span>
-                    <span className="text-sm font-semibold">{formatNumber(mailerLiteData.subscribers.unsubscribed)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Groups</span>
-                    <span className="text-sm font-semibold">{formatNumber(mailerLiteData.subscribers.groups)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Segments</span>
-                    <span className="text-sm font-semibold">{formatNumber(mailerLiteData.subscribers.segments)}</span>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-500">Avg Bounce Rate</p>
+                    <p className="text-2xl font-bold text-gray-900">{formatPercentage(mailerLiteData.engagementTrends.averageBounceRate)}</p>
                   </div>
                 </div>
               </div>
@@ -354,71 +313,34 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            {/* Groups and Engagement Trends (shortened + pagination) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Subscriber Groups</h3>
-                <div className="space-y-3 max-h-80 overflow-y-auto">
-                  {mailerLiteData.groups
-                    .slice((groupsPage - 1) * groupsPerPage, groupsPage * groupsPerPage)
-                    .map((group, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="font-medium text-gray-900 truncate max-w-[220px]">{group.name}</p>
-                          <p className="text-xs text-gray-500">{formatNumber(group.total)} subscribers</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-gray-900">{formatNumber(group.active)} active</p>
-                          <p className="text-xs text-gray-500">{formatNumber(group.unsubscribed)} unsubscribed</p>
-                        </div>
-                      </div>
-                    ))}
+            {/* Total Campaigns Statistics */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Total Campaigns Statistics</h3>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-900">{formatNumber(mailerLiteData.performance.totalSent)}</div>
+                  <div className="text-sm text-gray-600">Total Sent</div>
                 </div>
-                {Math.ceil(mailerLiteData.groups.length / groupsPerPage) > 1 && (
-                  <div className="mt-3 flex items-center justify-between text-sm">
-                    <button
-                      onClick={() => setGroupsPage(p => Math.max(1, p - 1))}
-                      disabled={groupsPage === 1}
-                      className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md disabled:opacity-50"
-                    >
-                      Prev
-                    </button>
-                    <span className="text-gray-600">
-                      Page {groupsPage} of {Math.ceil(mailerLiteData.groups.length / groupsPerPage)}
-                    </span>
-                    <button
-                      onClick={() => setGroupsPage(p => Math.min(Math.ceil(mailerLiteData.groups.length / groupsPerPage), p + 1))}
-                      disabled={groupsPage === Math.ceil(mailerLiteData.groups.length / groupsPerPage)}
-                      className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md disabled:opacity-50"
-                    >
-                      Next
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Engagement Trends</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Avg Open Rate</span>
-                    <span className="text-sm font-semibold">{formatPercentage(mailerLiteData.engagementTrends.averageOpenRate)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Avg Click Rate</span>
-                    <span className="text-sm font-semibold">{formatPercentage(mailerLiteData.engagementTrends.averageClickRate)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Avg Unsub Rate</span>
-                    <span className="text-sm font-semibold">{formatPercentage(mailerLiteData.engagementTrends.averageUnsubscribeRate)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Avg Bounce Rate</span>
-                    <span className="text-sm font-semibold">{formatPercentage(mailerLiteData.engagementTrends.averageBounceRate)}</span>
-                  </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-900">{formatNumber(mailerLiteData.performance.totalOpens)}</div>
+                  <div className="text-sm text-gray-600">Total Opens</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-900">{formatNumber(mailerLiteData.performance.totalClicks)}</div>
+                  <div className="text-sm text-gray-600">Total Clicks</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-900">{formatNumber(mailerLiteData.performance.totalUnsubscribes)}</div>
+                  <div className="text-sm text-gray-600">Unsubscribes</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-900">{formatNumber(mailerLiteData.performance.totalBounces)}</div>
+                  <div className="text-sm text-gray-600">Bounces</div>
                 </div>
               </div>
             </div>
+
+
           </>
         ) : null}
       </div>

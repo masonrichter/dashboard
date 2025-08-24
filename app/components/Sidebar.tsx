@@ -18,10 +18,10 @@ import { usePathname } from 'next/navigation'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon },
-  { name: 'Clients', href: '/clients', icon: UsersIcon },
+  { name: 'Clients', href: '/clients-overview', icon: UsersIcon },
   { name: 'Tags', href: '/tags', icon: TagIcon },
   { name: 'AUM', href: '/aum', icon: CurrencyDollarIcon },
-  { name: 'Campaigns', href: '/mailerlite/campaign', icon: EnvelopeIcon }, 
+  { name: 'Communication', href: '/communication', icon: EnvelopeIcon }, 
   { name: 'Social Media', href: '/buffer', icon: ShareIcon },
   { name: 'Analytics', href: '/analytics', icon: ChartBarIcon },
 ]

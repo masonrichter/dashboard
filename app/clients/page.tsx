@@ -1,7 +1,21 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { 
+  UsersIcon, 
+  HomeIcon, 
+  CreditCardIcon, 
+  CalendarIcon,
+  ChartBarIcon,
+  CurrencyDollarIcon,
+  ClockIcon,
+  GiftIcon,
+  HeartIcon,
+  StarIcon,
+  ExclamationTriangleIcon
+} from '@heroicons/react/24/outline'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts'
 
 interface DisplayContact {
   id: number
@@ -19,6 +33,42 @@ interface DisplayContact {
   details: string
   websites: string[]
   customFields: any[]
+}
+
+interface Client {
+  id: number
+  name: string
+  household: string
+  account: string
+  aum: number
+  rmd: number
+  distributionsYtd: number
+  remainingRmd: number
+  birthday: string
+  anniversary: string
+  events: Event[]
+}
+
+interface Event {
+  id: number
+  title: string
+  date: string
+  type: 'birthday' | 'anniversary' | 'custom'
+  clientId?: number
+}
+
+interface AUMData {
+  totalAUM: number
+  totalHouseholds: number
+  totalAccounts: number
+  averageAUMPerHousehold: number
+  averageAUMPerAccount: number
+  topHouseholds: Client[]
+  topAccounts: Client[]
+  rmdClients: Client[]
+  upcomingBirthdays: Client[]
+  upcomingAnniversaries: Client[]
+  upcomingEvents: Event[]
 }
 
 async function fetchContactsFromAPI(): Promise<DisplayContact[]> {

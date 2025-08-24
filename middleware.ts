@@ -8,6 +8,13 @@ const PASS = process.env.BASIC_AUTH_PASS || ''
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
+  // Redirect old clients route to new clients-overview to avoid UI flash
+  if (pathname === '/clients') {
+    const url = req.nextUrl.clone()
+    url.pathname = '/clients-overview'
+    return NextResponse.redirect(url)
+  }
+
   // allow framework internals & static assets
   if (
     pathname.startsWith('/_next') ||
@@ -43,5 +50,5 @@ export function middleware(req: NextRequest) {
 
 // Protect everything by default. Add exceptions here (e.g., health check).
 export const config = {
-  matcher: ['/((?!api/health).*)'], // remove or edit if you want to protect API too
+  matcher: ['/((?!api/).*)'], // exclude all API routes from basic auth
 }

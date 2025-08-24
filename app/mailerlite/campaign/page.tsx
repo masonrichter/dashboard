@@ -1,7 +1,21 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { EnvelopeIcon, MagnifyingGlassIcon, ChevronDownIcon, EyeIcon, CursorArrowRaysIcon } from '@heroicons/react/24/outline'
+import { 
+  EnvelopeIcon, 
+  MagnifyingGlassIcon, 
+  ChevronDownIcon, 
+  EyeIcon, 
+  CursorArrowRaysIcon,
+  UserGroupIcon,
+  TagIcon,
+  CheckCircleIcon,
+  ArrowRightIcon,
+  UsersIcon,
+  DocumentTextIcon,
+  PaperAirplaneIcon,
+  ArrowLeftIcon
+} from '@heroicons/react/24/outline'
 
 type Contact = {
   id: number
@@ -29,23 +43,7 @@ type Campaign = {
   clicked_rate: number
 }
 
-type Subscriber = {
-  id: string
-  email: string
-  name: string
-  status: string
-  sent: number
-  opens_count: number
-  clicks_count: number
-  open_rate: number
-  click_rate: number
-  subscribed_at: string
-  created_at: string
-  updated_at: string
-  fields: Record<string, any>
-}
-
-type ContactsByTag = Record<string, Contact[]>
+type Step = 'search' | 'select' | 'filter' | 'create'
 
 export default function MailerPage() {
   // Data
@@ -56,17 +54,19 @@ export default function MailerPage() {
   // UI state
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [currentStep, setCurrentStep] = useState<Step>('search')
 
   // MailerLite form fields
   const [groupName, setGroupName] = useState<string>('')
+  const [emailSubject, setEmailSubject] = useState<string>('')
+  const [emailContent, setEmailContent] = useState<string>('')
 
   // Copper selection
   const [selectedContactIds, setSelectedContactIds] = useState<number[]>([])
   const [searchQuery, setSearchQuery] = useState('')
-  const [expandedTags, setExpandedTags] = useState<string[]>([])
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [filterType, setFilterType] = useState<'any' | 'all'>('any')
   const [sending, setSending] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
-
-
 
   // Load all data
   useEffect(() => {
@@ -84,7 +84,6 @@ export default function MailerPage() {
               'Accept': 'application/json'
             }
           }),
-          // Use dedicated endpoint that returns sent campaigns
           fetch('/api/mailerlite/campaigns')
         ])
 
@@ -100,7 +99,6 @@ export default function MailerPage() {
         }))
 
         const rawCampaigns = await campaignsRes.json()
-        console.log('Raw campaigns from API:', rawCampaigns)
         const campaignsData: Campaign[] = (rawCampaigns || []).map((c: any) => ({
           id: c.id,
           name: c.name,
@@ -113,14 +111,11 @@ export default function MailerPage() {
           opened_rate: c.opened_rate ?? 0,
           clicked_rate: c.clicked_rate ?? 0,
         }))
-        console.log('Normalized campaigns:', campaignsData)
 
         if (!mounted) return
-        console.log('Setting campaigns:', campaignsData.length, 'campaigns')
         setContacts(contactsData)
         setGroups(groupsData)
         setCampaigns(campaignsData)
-
 
       } catch (e: any) {
         if (!mounted) return
@@ -133,37 +128,50 @@ export default function MailerPage() {
     return () => { mounted = false }
   }, [])
 
-
-
-  // Group contacts by tag for the left panel
-  const contactsByTag: ContactsByTag = useMemo(() => {
-    const grouped: ContactsByTag = {}
+  // Get all unique tags
+  const allTags = useMemo(() => {
+    const tags = new Set<string>()
     contacts.forEach(c => {
-      const tags = c.tags?.length ? c.tags : ['No Tag']
-      tags.forEach(t => {
-        if (!grouped[t]) grouped[t] = []
-        grouped[t].push(c)
-      })
+      if (c.tags?.length) {
+        c.tags.forEach(tag => tags.add(tag))
+      } else {
+        tags.add('No Tag')
+      }
     })
-    return grouped
+    return Array.from(tags).sort()
   }, [contacts])
 
-  // Filter by search query
-  const filteredByTag: ContactsByTag = useMemo(() => {
-    if (!searchQuery) return contactsByTag
-    const grouped: ContactsByTag = {}
-    Object.entries(contactsByTag).forEach(([tag, list]) => {
-      const filtered = list.filter(c =>
+  // Filter contacts based on search, tags, and filter type
+  const filteredContacts = useMemo(() => {
+    let filtered = contacts
+
+    // Filter by search query
+    if (searchQuery) {
+      filtered = filtered.filter(c =>
         c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         c.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
         c.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
       )
-      if (filtered.length) grouped[tag] = filtered
-    })
-    return grouped
-  }, [contactsByTag, searchQuery])
+    }
 
-  const entries = useMemo(() => Object.entries(filteredByTag), [filteredByTag])
+    // Filter by selected tags
+    if (selectedTags.length > 0) {
+      if (filterType === 'any') {
+        filtered = filtered.filter(c => 
+          c.tags?.some(tag => selectedTags.includes(tag)) || 
+          (c.tags?.length === 0 && selectedTags.includes('No Tag'))
+        )
+      } else { // 'all'
+        filtered = filtered.filter(c => 
+          selectedTags.every(tag => 
+            c.tags?.includes(tag) || (tag === 'No Tag' && (!c.tags || c.tags.length === 0))
+          )
+        )
+      }
+    }
+
+    return filtered
+  }, [contacts, searchQuery, selectedTags, filterType])
 
   // Copper selection handlers
   const toggleContact = (id: number) => {
@@ -172,21 +180,37 @@ export default function MailerPage() {
     )
   }
 
-  const toggleTagAll = (tag: string) => {
-    const ids = (filteredByTag[tag] || []).map(c => c.id)
-    const allSelected = ids.every(id => selectedContactIds.includes(id))
-    setSelectedContactIds(prev =>
-      allSelected ? prev.filter(id => !ids.includes(id)) : Array.from(new Set([...prev, ...ids]))
-    )
-  }
-
-  const toggleExpand = (tag: string) => {
-    setExpandedTags(prev =>
+  const toggleTag = (tag: string) => {
+    setSelectedTags(prev =>
       prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
     )
   }
 
+  const selectAllFiltered = () => {
+    const ids = filteredContacts.map(c => c.id)
+    setSelectedContactIds(prev => Array.from(new Set([...prev, ...ids])))
+  }
 
+  const clearSelection = () => {
+    setSelectedContactIds([])
+  }
+
+  // Step navigation
+  const nextStep = () => {
+    const steps: Step[] = ['search', 'select', 'filter', 'create']
+    const currentIndex = steps.indexOf(currentStep)
+    if (currentIndex < steps.length - 1) {
+      setCurrentStep(steps[currentIndex + 1])
+    }
+  }
+
+  const prevStep = () => {
+    const steps: Step[] = ['search', 'select', 'filter', 'create']
+    const currentIndex = steps.indexOf(currentStep)
+    if (currentIndex > 0) {
+      setCurrentStep(steps[currentIndex - 1])
+    }
+  }
 
   // Send via the Make.com webhook
   const handleSend = async () => {
@@ -210,8 +234,6 @@ export default function MailerPage() {
         }),
       })
 
-      // The Make.com webhook returns a simple 'Accepted' or similar message,
-      // not JSON. The 'res.ok' check is sufficient.
       if (!res.ok) {
         const errorText = await res.text()
         throw new Error(errorText || 'Failed to send with unknown error.')
@@ -226,127 +248,470 @@ export default function MailerPage() {
     }
   }
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return 'Not sent'
-    try {
-      // Handle the date format from MailerLite API (e.g., "2025-08-04 03:16:43")
-      const date = new Date(dateString)
-      return date.toLocaleDateString()
-    } catch {
-      return 'Invalid date'
-    }
-  }
+  if (loading) return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading your campaign dashboard...</p>
+      </div>
+    </div>
+  )
 
-  const formatPercentage = (rate: number) => {
-    // The API returns rates as decimals (e.g., 1.018 = 101.8%)
-    return `${(rate * 100).toFixed(1)}%`
-  }
-
-  if (loading) return <div className="p-6">Loading…</div>
-  if (error) return <div className="p-6 text-red-500">Error: {error}</div>
+  if (error) return (
+    <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-100 flex items-center justify-center">
+      <div className="text-center">
+        <div className="text-red-500 text-6xl mb-4">⚠️</div>
+        <h2 className="text-2xl font-bold text-red-800 mb-2">Oops! Something went wrong</h2>
+        <p className="text-red-600">{error}</p>
+      </div>
+    </div>
+  )
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">MailerLite Campaigns</h1>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* LEFT: Copper contacts */}
-        <div className="md:col-span-2">
-          <div className="relative mb-4">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              className="w-full rounded-md border border-gray-300 pl-10 pr-4 py-2 text-sm"
-              placeholder="Search clients by name, email, or tag…"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-            {entries.map(([tag, list]) => (
-              <div key={tag} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <div className="flex items-center justify-between cursor-pointer" onClick={() => toggleExpand(tag)}>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      className="rounded text-blue-600 h-5 w-5"
-                      checked={list.every(c => selectedContactIds.includes(c.id))}
-                      onChange={() => toggleTagAll(tag)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <h3 className="text-lg font-medium">{tag}</h3>
-                    <span className="text-sm text-gray-500">({list.length})</span>
-                  </div>
-                  <ChevronDownIcon
-                    className={`h-5 w-5 transition-transform duration-200 ${expandedTags.includes(tag) ? 'rotate-180' : ''}`}
-                  />
-                </div>
-
-                {expandedTags.includes(tag) && (
-                  <div className="space-y-2 pl-6 mt-3">
-                    {list.map(contact => (
-                      <label key={contact.id} className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          className="rounded text-blue-600 h-4 w-4"
-                          checked={selectedContactIds.includes(contact.id)}
-                          onChange={() => toggleContact(contact.id)}
-                        />
-                        <span className="text-sm text-gray-700">
-                          {contact.name} — {contact.email || 'No email'}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      <div className="container mx-auto px-6 py-8">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Email Campaigns</h1>
+          <p className="text-gray-600 text-lg">Create targeted email campaigns for your clients</p>
         </div>
 
-        {/* RIGHT: Send panel */}
-        <div className="md:col-span-1">
-          <div className="sticky top-8 bg-white rounded-lg shadow-md border border-gray-200 p-6 space-y-3">
-            <h2 className="text-xl font-semibold">Create Group</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* LEFT BOX: Step-by-Step Process */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-soft border border-white/20 p-8 h-[600px] flex flex-col">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+              <CursorArrowRaysIcon className="h-6 w-6 mr-3 text-blue-600" />
+              Campaign Creation Steps
+            </h2>
 
-            <label className="block text-sm font-medium">New Group Name</label>
-            <input
-              className="w-full p-2 border rounded mb-2"
-              value={groupName}
-              onChange={(e) => setGroupName(e.target.value)}
-              placeholder="e.g., 'New Campaign Group'"
-            />
-
-            <button
-              onClick={handleSend}
-              disabled={sending === 'loading' || !groupName || selectedContactIds.length === 0}
-              className="mt-2 w-full flex items-center justify-center space-x-2 bg-blue-600 text-white py-2 px-4 rounded-md shadow-sm hover:bg-blue-700 transition-colors duration-200 disabled:bg-gray-400"
-            >
-              {sending === 'loading' ? 'Sending…' : (
-                <>
-                  <EnvelopeIcon className="h-5 w-5" />
-                  <span>Create Group & Add Subscribers</span>
-                </>
-              )}
-            </button>
-
-            {sending === 'error' && <p className="text-sm text-red-500">Failed to create group.</p>}
-            {sending === 'success' && (
-              <div className="mt-4">
-                <p className="text-sm text-green-600">Group created and subscribers added successfully!</p>
-                <a 
-                  href="https://dashboard.mailerlite.com/campaigns/status/draft" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="mt-2 inline-flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors duration-200"
-                >
-                  <span>Click here to create your campaign in MailerLite</span>
-                </a>
+            {/* Step Progress Indicator */}
+            <div className="flex items-center justify-center mb-6">
+              <div className="flex items-center">
+                {['search', 'select', 'filter', 'create'].map((step, index) => (
+                  <div key={step} className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                      currentStep === step 
+                        ? 'bg-blue-600 text-white' 
+                        : index < ['search', 'select', 'filter', 'create'].indexOf(currentStep)
+                        ? 'bg-green-600 text-white'
+                        : 'bg-gray-300 text-gray-600'
+                    }`}>
+                      {index + 1}
+                    </div>
+                    {index < 3 && (
+                      <div className={`w-16 h-1 mx-2 ${
+                        index < ['search', 'select', 'filter', 'create'].indexOf(currentStep)
+                          ? 'bg-green-600'
+                          : 'bg-gray-300'
+                      }`}></div>
+                    )}
+                  </div>
+                ))}
               </div>
-            )}
+            </div>
+
+            {/* Step Content */}
+            <div className="flex-1 flex flex-col">
+              {/* Step 1: Search by Names or Tags */}
+              {currentStep === 'search' && (
+                <div className="flex-1 flex flex-col">
+                  <div className="mb-6">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">Step 1: Search by Names or Tags</h3>
+                    <p className="text-gray-600">Search for contacts by name, email, or select tags to filter your audience.</p>
+                  </div>
+                  
+                  <div className="flex-1 flex flex-col justify-center space-y-6">
+                    <div className="relative">
+                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <input
+                        type="text"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition-all duration-300"
+                        placeholder="Search clients by name, email, or tag..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 mb-3">Or select tags:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {allTags.slice(0, 12).map(tag => (
+                          <button
+                            key={tag}
+                            onClick={() => toggleTag(tag)}
+                            className={`px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                              selectedTags.includes(tag)
+                                ? 'bg-blue-600 text-white shadow-md'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                        {allTags.length > 12 && (
+                          <span className="px-3 py-2 text-sm text-gray-500">+{allTags.length - 12} more</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6">
+                    <button
+                      onClick={nextStep}
+                      className="w-full flex items-center justify-center space-x-2 bg-blue-600 text-white py-3 px-6 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-300"
+                    >
+                      <span>Continue to Step 2</span>
+                      <ArrowRightIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Pick Names/Tags */}
+              {currentStep === 'select' && (
+                <div className="flex-1 flex flex-col">
+                  <div className="mb-6">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">Step 2: Review Selected Filters</h3>
+                    <p className="text-gray-600">Review your selected tags and choose how to filter the results.</p>
+                  </div>
+                  
+                  <div className="flex-1 flex flex-col justify-center space-y-6">
+                    {selectedTags.length > 0 ? (
+                      <div>
+                        <p className="text-sm font-medium text-gray-700 mb-3">Selected tags:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedTags.map(tag => (
+                            <span key={tag} className="px-3 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium flex items-center">
+                              {tag}
+                              <button
+                                onClick={() => toggleTag(tag)}
+                                className="ml-2 text-green-600 hover:text-green-800"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <TagIcon className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                        <p>No tags selected</p>
+                        <p className="text-sm">Go back to step 1 to select tags</p>
+                      </div>
+                    )}
+
+                    <div className="bg-gray-50 p-4 rounded-xl">
+                      <p className="text-sm font-medium text-gray-700 mb-3">Filter type:</p>
+                      <div className="flex items-center space-x-6">
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            value="any"
+                            checked={filterType === 'any'}
+                            onChange={(e) => setFilterType(e.target.value as 'any' | 'all')}
+                            className="mr-2"
+                          />
+                          <span className="text-sm">Any tag (contacts with any of the selected tags)</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            value="all"
+                            checked={filterType === 'all'}
+                            onChange={(e) => setFilterType(e.target.value as 'any' | 'all')}
+                            className="mr-2"
+                          />
+                          <span className="text-sm">All tags (contacts with all selected tags)</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex space-x-3">
+                    <button
+                      onClick={prevStep}
+                      className="flex-1 flex items-center justify-center space-x-2 bg-gray-200 text-gray-700 py-3 px-6 rounded-xl font-semibold hover:bg-gray-300 transition-all duration-300"
+                    >
+                      <ArrowLeftIcon className="h-5 w-5" />
+                      <span>Back</span>
+                    </button>
+                    <button
+                      onClick={nextStep}
+                      className="flex-1 flex items-center justify-center space-x-2 bg-green-600 text-white py-3 px-6 rounded-xl font-semibold hover:bg-green-700 transition-all duration-300"
+                    >
+                      <span>Continue to Step 3</span>
+                      <ArrowRightIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Any or All */}
+              {currentStep === 'filter' && (
+                <div className="flex-1 flex flex-col">
+                  <div className="mb-6">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">Step 3: Review Filtered Results</h3>
+                    <p className="text-gray-600">Review the contacts that match your criteria and select your recipients.</p>
+                  </div>
+                  
+                  <div className="flex-1 flex flex-col justify-center space-y-6">
+                    <div className="bg-purple-50 p-6 rounded-xl border border-purple-200">
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-lg font-semibold text-purple-800">Filtered Contacts</span>
+                        <span className="text-2xl font-bold text-purple-600">{filteredContacts.length}</span>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={selectAllFiltered}
+                            className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 text-sm font-medium"
+                          >
+                            Select All ({filteredContacts.length})
+                          </button>
+                          <button
+                            onClick={clearSelection}
+                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-200 text-sm font-medium"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                        
+                        <div className="text-sm text-purple-700">
+                          <p>Selected: <span className="font-semibold">{selectedContactIds.length}</span> contacts</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {filteredContacts.length === 0 && (
+                      <div className="text-center py-8 text-gray-500">
+                        <EyeIcon className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                        <p>No contacts match your current filters</p>
+                        <p className="text-sm">Try adjusting your search or tag selection</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-6 flex space-x-3">
+                    <button
+                      onClick={prevStep}
+                      className="flex-1 flex items-center justify-center space-x-2 bg-gray-200 text-gray-700 py-3 px-6 rounded-xl font-semibold hover:bg-gray-300 transition-all duration-300"
+                    >
+                      <ArrowLeftIcon className="h-5 w-5" />
+                      <span>Back</span>
+                    </button>
+                    <button
+                      onClick={nextStep}
+                      disabled={selectedContactIds.length === 0}
+                      className="flex-1 flex items-center justify-center space-x-2 bg-purple-600 text-white py-3 px-6 rounded-xl font-semibold hover:bg-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <span>Continue to Step 4</span>
+                      <ArrowRightIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 4: Email Creation */}
+              {currentStep === 'create' && (
+                <div className="flex-1 flex flex-col">
+                  <div className="mb-6">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">Step 4: Create Email Campaign</h3>
+                    <p className="text-gray-600">Create your email campaign and send it to {selectedContactIds.length} selected recipients.</p>
+                  </div>
+                  
+                  <div className="flex-1 flex flex-col justify-center space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Group Name</label>
+                      <input
+                        type="text"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-orange-200 focus:border-orange-500 transition-all duration-300"
+                        placeholder="Enter group name..."
+                        value={groupName}
+                        onChange={(e) => setGroupName(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email Subject</label>
+                      <input
+                        type="text"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-orange-200 focus:border-orange-500 transition-all duration-300"
+                        placeholder="Enter email subject..."
+                        value={emailSubject}
+                        onChange={(e) => setEmailSubject(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email Content</label>
+                      <textarea
+                        rows={4}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-orange-200 focus:border-orange-500 transition-all duration-300 resize-none"
+                        placeholder="Enter your email content..."
+                        value={emailContent}
+                        onChange={(e) => setEmailContent(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex space-x-3">
+                    <button
+                      onClick={prevStep}
+                      className="flex-1 flex items-center justify-center space-x-2 bg-gray-200 text-gray-700 py-3 px-6 rounded-xl font-semibold hover:bg-gray-300 transition-all duration-300"
+                    >
+                      <ArrowLeftIcon className="h-5 w-5" />
+                      <span>Back</span>
+                    </button>
+                    <button
+                      onClick={handleSend}
+                      disabled={sending === 'loading' || !groupName || selectedContactIds.length === 0}
+                      className="flex-1 flex items-center justify-center space-x-2 bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 px-6 rounded-xl font-semibold hover:from-orange-600 hover:to-red-600 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                    >
+                      {sending === 'loading' ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                          <span>Sending...</span>
+                        </>
+                      ) : (
+                        <>
+                          <PaperAirplaneIcon className="h-5 w-5" />
+                          <span>Send Campaign ({selectedContactIds.length} recipients)</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {sending === 'error' && (
+                    <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm text-red-600">Failed to send campaign. Please try again.</p>
+                    </div>
+                  )}
+                  {sending === 'success' && (
+                    <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm text-green-800 font-medium">Campaign sent successfully!</p>
+                      <a 
+                        href="https://dashboard.mailerlite.com/campaigns/status/draft" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-sm text-green-600 hover:text-green-800 underline mt-1 inline-block"
+                      >
+                        View in MailerLite Dashboard
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* RIGHT BOX: Live People Preview */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-soft border border-white/20 p-8 h-[600px] flex flex-col">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+              <UsersIcon className="h-6 w-6 mr-3 text-green-600" />
+              Live People Preview
+            </h2>
+
+            {/* Summary Stats */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                <div className="flex items-center">
+                  <UserGroupIcon className="h-8 w-8 text-blue-600 mr-3" />
+                  <div>
+                    <p className="text-sm text-blue-600 font-medium">Total Contacts</p>
+                    <p className="text-2xl font-bold text-blue-800">{contacts.length}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-green-50 p-4 rounded-xl border border-green-200">
+                <div className="flex items-center">
+                  <CheckCircleIcon className="h-8 w-8 text-green-600 mr-3" />
+                  <div>
+                    <p className="text-sm text-green-600 font-medium">Selected</p>
+                    <p className="text-2xl font-bold text-green-800">{selectedContactIds.length}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Filtered Results */}
+            <div className="flex-1 flex flex-col">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-gray-900">Filtered Results</h3>
+                <span className="text-sm text-gray-500">{filteredContacts.length} contacts</span>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                {filteredContacts.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <EyeIcon className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                    <p>No contacts match your current filters</p>
+                    <p className="text-sm">Try adjusting your search or tag selection</p>
+                  </div>
+                ) : (
+                  filteredContacts.map(contact => (
+                    <div
+                      key={contact.id}
+                      className={`p-3 rounded-lg border transition-all duration-200 cursor-pointer ${
+                        selectedContactIds.includes(contact.id)
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-gray-200 bg-gray-50 hover:border-gray-300 hover:bg-gray-100'
+                      }`}
+                      onClick={() => toggleContact(contact.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedContactIds.includes(contact.id)}
+                              onChange={() => toggleContact(contact.id)}
+                              className="rounded text-green-600 h-4 w-4"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <span className="font-medium text-gray-900">{contact.name}</span>
+                            {selectedContactIds.includes(contact.id) && (
+                              <CheckCircleIcon className="h-4 w-4 text-green-600" />
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600 ml-6">{contact.email}</p>
+                          {contact.tags?.length > 0 && (
+                            <div className="flex flex-wrap gap-1 ml-6 mt-1">
+                              {contact.tags.map(tag => (
+                                <span
+                                  key={tag}
+                                  className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="border-t border-gray-200 pt-4 mt-4">
+              <div className="flex space-x-2">
+                <button
+                  onClick={selectAllFiltered}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 text-sm font-medium"
+                >
+                  Select All
+                </button>
+                <button
+                  onClick={clearSelection}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-200 text-sm font-medium"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

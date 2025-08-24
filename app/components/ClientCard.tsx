@@ -39,7 +39,7 @@ export default function ClientCard({ client }: { client: Client }) {
       <div className="mt-6">
         <p className="text-xs text-gray-500">Last Modified: {lastModified}</p>
         <Link
-          href={`/clients?clientId=${client.id}`}
+          href={`/clients-overview?clientId=${client.id}`}
           className="mt-3 inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
         >
           View Client <ArrowRightIcon className="ml-1 h-4 w-4" />

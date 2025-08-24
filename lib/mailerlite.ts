@@ -616,6 +616,7 @@ export async function createAndSendCustomCampaign(
         plain: plainContent
       },
       groups: groupIds,
+      emails: [fromEmail || 'noreply@glennfinancial.com'], // Add emails field to satisfy API requirement
       send_time: sendTime
     }
 

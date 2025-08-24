@@ -1,247 +1,222 @@
-# Glenn Dashboard
+# Flask MailerLite Campaign API
 
-A comprehensive client management dashboard built with Next.js, TypeScript, and Tailwind CSS. This dashboard integrates with Copper CRM, MailerLite, Buffer, and Google Calendar to provide a unified platform for managing financial advisory clients.
+A Flask application that fully automates the process of creating and sending MailerLite campaigns through a single API endpoint.
 
-## 🚀 Features
+## Features
 
-### Core Dashboard
-- **Dashboard Overview**: AUM tracking, client analytics, and key performance metrics
-- **Client Management**: Detailed client profiles with AUM tracking and status management
-- **Task Management**: Create, track, and manage client-related tasks and appointments
+- **Single Endpoint**: One POST request to create and send campaigns
+- **Three-Step Automation**: Create campaign → Add content → Send campaign
+- **Error Handling**: Comprehensive error handling and logging
+- **Health Checks**: Built-in health check and connection testing
+- **Logging**: Detailed logging for debugging and monitoring
 
-### CRM Integration (Copper)
-- **Contact Management**: View and manage all Copper CRM contacts
-- **Search & Filter**: Advanced search and filtering capabilities
-- **Tag Management**: Organize contacts with custom tags and categories
-- **Real-time Sync**: Live data synchronization with Copper CRM
+## Setup
 
-### Email Marketing (MailerLite)
-- **Campaign Creation**: Create and send email campaigns from templates
-- **Subscriber Management**: Manage email lists and subscriber groups
-- **Analytics**: Track open rates, click rates, and campaign performance
-- **Scheduling**: Schedule campaigns for optimal delivery times
+### 1. Install Dependencies
 
-### Social Media Management (Buffer)
-- **Post Scheduling**: Schedule posts across multiple social media platforms
-- **Content Management**: Create and manage social media content
-- **Platform Integration**: Support for LinkedIn, Twitter, Facebook, and Instagram
-- **Analytics**: Track engagement and performance metrics
-
-### Calendar Integration (Google Calendar)
-- **Event Management**: Create and manage client appointments
-- **Calendar Sync**: Real-time synchronization with Google Calendar
-- **Meeting Scheduling**: Schedule and track client meetings
-- **Reminder System**: Automated reminders for upcoming appointments
-
-### Analytics & Reporting
-- **Campaign Analytics**: Comprehensive email and social media analytics
-- **Client Analytics**: Track client engagement and portfolio performance
-- **Performance Metrics**: Key performance indicators and trend analysis
-- **Custom Reports**: Generate custom reports for different time periods
-
-## 🛠️ Tech Stack
-
-- **Framework**: Next.js 14 with App Router
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **UI Components**: Headless UI + Heroicons
-- **Charts**: Recharts
-- **HTTP Client**: Axios
-- **Date Handling**: date-fns
-- **Forms**: React Hook Form
-- **Notifications**: React Hot Toast
-
-## 📦 Installation
-
-### Local Development
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd glenn-dashboard
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables**
-   Create a `.env.local` file in the root directory and add your API keys:
-   ```env
-   # Copper CRM API
-   COPPER_API_KEY=your_copper_api_key_here
-   COPPER_BASE_URL=https://api.copper.com/developer_api/v1
-   COPPER_USER_EMAIL=your_copper_user_email@example.com
-
-   # MailerLite API
-   MAILERLITE_API_KEY=your_mailerlite_api_key_here
-
-   # Buffer API
-   BUFFER_ACCESS_TOKEN=your_buffer_access_token_here
-
-   # Google OAuth Configuration
-   GOOGLE_CLIENT_ID=your_google_client_id_here
-   GOOGLE_CLIENT_SECRET=your_google_client_secret_here
-   GOOGLE_REDIRECT_URI=http://localhost:3000/auth/callback
-
-   # Next.js Public Variables
-   NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id_here
-   NEXT_PUBLIC_GOOGLE_REDIRECT_URI=http://localhost:3000/auth/callback
-   NEXT_PUBLIC_BUFFER_ACCESS_TOKEN=your_buffer_access_token_here
-   ```
-
-4. **Run the development server**
-   ```bash
-   npm run dev
-   ```
-
-5. **Open your browser**
-   Navigate to [http://localhost:3000](http://localhost:3000)
-
-### Production Deployment (Vercel)
-
-For production deployment to Vercel, see the [Vercel Deployment Guide](./VERCEL_DEPLOYMENT.md) for detailed instructions.
-
-**Quick Steps:**
-1. Push your code to a Git repository
-2. Connect your repository to Vercel
-3. Set up environment variables in Vercel dashboard
-4. Deploy!
-
-**Required Environment Variables for Vercel:**
-- All variables listed above, but update redirect URIs to your Vercel domain
-- Example: `GOOGLE_REDIRECT_URI=https://your-app.vercel.app/auth/callback`
-
-## 🔧 API Setup
-
-### Copper CRM
-1. Sign up for a Copper account
-2. Generate an API key from your Copper settings
-3. Add the API key to your `.env.local` file
-
-### MailerLite
-1. Create a MailerLite account
-2. Generate an API key from your account settings
-3. Add the API key to your `.env.local` file
-
-### Buffer
-1. Create a Buffer account
-2. Connect your social media accounts
-3. Generate an access token from your Buffer settings
-4. Add the access token to your `.env.local` file
-
-### Google Calendar
-1. Create a Google Cloud project
-2. Enable the Google Calendar API
-3. Create OAuth 2.0 credentials
-4. Add the client ID and secret to your `.env.local` file
-
-## 📁 Project Structure
-
-```
-glenn-dashboard/
-├── app/
-│   ├── components/          # Reusable UI components
-│   │   ├── Layout.tsx       # Main layout wrapper
-│   │   ├── Sidebar.tsx      # Navigation sidebar
-│   │   ├── Header.tsx       # Top header bar
-│   │   ├── DashboardSummary.tsx
-│   │   ├── ClientCard.tsx
-│   │   ├── CopperCRM.tsx
-│   │   ├── MailerLiteSender.tsx
-│   │   ├── CampaignAnalytics.tsx
-│   │   ├── TagExplorer.tsx
-│   │   └── BufferScheduler.tsx
-│   ├── page.tsx             # Dashboard homepage
-│   ├── clients/page.tsx     # Clients page
-│   ├── crm/page.tsx         # CRM page
-│   ├── mailer/page.tsx      # Email marketing page
-│   ├── calendar/page.tsx    # Calendar page
-│   ├── buffer/page.tsx      # Social media page
-│   ├── analytics/page.tsx   # Analytics page
-│   ├── tasks/page.tsx       # Tasks page
-│   ├── layout.tsx           # Root layout
-│   └── globals.css          # Global styles
-├── lib/                     # API integrations and utilities
-│   ├── copper.ts           # Copper CRM API
-│   ├── mailerlite.ts       # MailerLite API
-│   ├── buffer.ts           # Buffer API
-│   ├── google.ts           # Google Calendar API
-│   └── utils.ts            # Utility functions
-├── public/                  # Static assets
-├── package.json
-├── tailwind.config.ts
-├── next.config.ts
-├── tsconfig.json
-└── README.md
+```bash
+pip install -r requirements.txt
 ```
 
-## 🎨 Customization
+### 2. Set Environment Variables
 
-### Styling
-The dashboard uses Tailwind CSS for styling. You can customize the design by modifying:
-- `tailwind.config.ts` - Theme configuration
-- `app/globals.css` - Global styles and custom components
-- Individual component files for specific styling
+Create a `.env` file in the project root:
 
-### Components
-All components are built with reusability in mind. You can easily:
-- Modify existing components
-- Create new components following the same patterns
-- Extend functionality by adding new features
+```bash
+MAILERLITE_API_KEY=your_mailerlite_api_key_here
+```
 
-### API Integrations
-The API integration files in the `lib/` directory can be extended to:
-- Add new API endpoints
-- Implement additional features
-- Connect to other services
+### 3. Run the Flask Application
 
-## 🚀 Deployment
+```bash
+python flask_mailerlite_endpoint.py
+```
 
-### Vercel (Recommended)
-1. Push your code to GitHub
-2. Connect your repository to Vercel
-3. Add your environment variables in Vercel dashboard
-4. Deploy
+The server will start on `http://localhost:5000`
 
-### Other Platforms
-The dashboard can be deployed to any platform that supports Next.js:
-- Netlify
-- AWS Amplify
-- DigitalOcean App Platform
-- Railway
+## API Endpoints
 
-## 🤝 Contributing
+### 1. Send Campaign
+**POST** `/api/campaigns/send`
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Creates and sends a MailerLite campaign in one request.
 
-## 📝 License
+**Request Body:**
+```json
+{
+    "subject": "Your Email Subject",
+    "html_content": "<html><body><h1>Hello!</h1><p>This is HTML content.</p></body></html>",
+    "plain_content": "Hello! This is plain text content.",
+    "group_ids": [123, 456, 789]
+}
+```
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Campaign created and sent successfully",
+    "campaign_id": "campaign_123456",
+    "subject": "Your Email Subject",
+    "groups_sent_to": [123, 456, 789],
+    "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
 
-## 🆘 Support
+### 2. Health Check
+**GET** `/health`
 
-If you encounter any issues or have questions:
-1. Check the [Issues](https://github.com/your-repo/issues) page
-2. Create a new issue with detailed information
-3. Contact the development team
+Checks if the service is running and if the MailerLite API key is configured.
 
-## 🔮 Roadmap
+**Response:**
+```json
+{
+    "status": "healthy",
+    "timestamp": "2024-01-01T12:00:00.000Z",
+    "mailerlite_api_configured": true
+}
+```
 
-- [ ] Real-time notifications
-- [ ] Advanced reporting and analytics
-- [ ] Mobile app version
-- [ ] Multi-user support
-- [ ] Advanced automation workflows
-- [ ] Integration with additional CRM platforms
-- [ ] Advanced social media analytics
-- [ ] Client portal integration
+### 3. Test Connection
+**POST** `/api/campaigns/test`
 
----
+Tests the MailerLite API connection without sending any campaigns.
 
-Built with ❤️ for financial advisors who want to streamline their client management process. 
+**Response:**
+```json
+{
+    "success": true,
+    "message": "MailerLite API connection successful",
+    "account": {
+        "id": "account_123",
+        "name": "Your Account Name"
+    }
+}
+```
+
+## Usage Examples
+
+### Python Example
+
+```python
+import requests
+
+# Send a campaign
+campaign_data = {
+    "subject": "Welcome to Our Newsletter",
+    "html_content": "<h1>Welcome!</h1><p>Thank you for subscribing.</p>",
+    "plain_content": "Welcome! Thank you for subscribing.",
+    "group_ids": [123, 456]
+}
+
+response = requests.post(
+    "http://localhost:5000/api/campaigns/send",
+    json=campaign_data
+)
+
+if response.ok:
+    result = response.json()
+    print(f"Campaign sent! ID: {result['campaign_id']}")
+else:
+    print(f"Error: {response.json()['error']}")
+```
+
+### cURL Example
+
+```bash
+curl -X POST http://localhost:5000/api/campaigns/send \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subject": "Test Campaign",
+    "html_content": "<h1>Hello World</h1>",
+    "plain_content": "Hello World",
+    "group_ids": [123, 456]
+  }'
+```
+
+### JavaScript Example
+
+```javascript
+const campaignData = {
+    subject: "Test Campaign",
+    html_content: "<h1>Hello World</h1>",
+    plain_content: "Hello World",
+    group_ids: [123, 456]
+};
+
+fetch('http://localhost:5000/api/campaigns/send', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(campaignData)
+})
+.then(response => response.json())
+.then(data => {
+    if (data.success) {
+        console.log('Campaign sent!', data.campaign_id);
+    } else {
+        console.error('Error:', data.error);
+    }
+});
+```
+
+## Testing
+
+Run the example usage script to test all endpoints:
+
+```bash
+python example_usage.py
+```
+
+This will:
+1. Test the health check endpoint
+2. Test the MailerLite API connection
+3. Send a test campaign (if previous tests pass)
+
+## Error Handling
+
+The API returns detailed error messages for various scenarios:
+
+- **Missing API Key**: `MAILERLITE_API_KEY` not set
+- **Invalid Request**: Missing required fields or invalid data
+- **API Errors**: MailerLite API errors with details
+- **Network Errors**: Connection issues
+- **Unexpected Errors**: General application errors
+
+## Logging
+
+The application logs all operations with timestamps:
+
+```
+INFO:__main__:Starting campaign creation process for subject: Test Campaign
+INFO:__main__:Step 1: Creating campaign...
+INFO:__main__:Campaign created successfully with ID: campaign_123456
+INFO:__main__:Step 2: Adding content to campaign...
+INFO:__main__:Content added successfully to campaign
+INFO:__main__:Step 3: Sending campaign...
+INFO:__main__:Campaign sent successfully!
+```
+
+## Security Notes
+
+- Store your MailerLite API key securely
+- Use environment variables for configuration
+- Consider adding authentication to the Flask endpoints in production
+- Use HTTPS in production environments
+
+## Production Deployment
+
+For production deployment:
+
+1. Use a production WSGI server (e.g., Gunicorn)
+2. Set up proper logging
+3. Add authentication/authorization
+4. Use HTTPS
+5. Set up monitoring and health checks
+
+Example with Gunicorn:
+```bash
+pip install gunicorn
+gunicorn -w 4 -b 0.0.0.0:5000 flask_mailerlite_endpoint:app
+``` 

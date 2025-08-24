@@ -31,6 +31,28 @@ function getPhoneNumber(phoneNumbers: any[]): string {
   return phoneObj.number || phoneObj.number_value || phoneObj.value || 'No phone number';
 }
 
+function getBirthdayFromCustomFields(customFields: any[]): string | null {
+  if (!customFields || customFields.length === 0) {
+    console.log('No custom fields found');
+    return null;
+  }
+  
+  for (const field of customFields) {
+    if (field.custom_field_definition_id === 703490 && field.value) {
+      const timestampInMs = field.value * 1000;
+      const dateObject = new Date(timestampInMs);
+      const isoDateString = dateObject.toISOString();
+      const birthdayString = isoDateString.split('T')[0];
+      
+      console.log(`Found and converted birthday: ${birthdayString}`);
+      return birthdayString;
+    }
+  }
+  
+  console.log('No birthday field found with ID 703490');
+  return null;
+}
+
 export async function GET(request: NextRequest) {
   try {
     if (!COPPER_API_KEY || !COPPER_USER_EMAIL) {
@@ -63,10 +85,12 @@ export async function GET(request: NextRequest) {
       details: contact.details || '',
       websites: contact.websites || [],
       customFields: contact.custom_fields || [],
+      birthday: getBirthdayFromCustomFields(contact.custom_fields),
     }));
     
     return NextResponse.json(contacts);
   } catch (error: any) {
+    console.error('Copper API error:', error.response?.data || error.message);
     return NextResponse.json(
       {
         error: 'Failed to fetch contacts from Copper API',
@@ -99,7 +123,7 @@ export async function PUT(request: NextRequest) {
     
     return NextResponse.json(response.data);
   } catch (error: any) {
-    console.error('❌ Error updating contact in Copper:', error);
+    console.error('❌ Error updating contact in Copper:', error.response?.data || error.message);
     return NextResponse.json(
       { error: 'Failed to update contact in Copper', details: error.message },
       { status: 500 }

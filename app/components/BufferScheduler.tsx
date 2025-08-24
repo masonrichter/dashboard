@@ -47,10 +47,17 @@ export default function BufferScheduler() {
     try {
       const platforms = ['facebook', 'linkedin', 'instagram']
 
+      const platformFlags = {
+        linkedin: true,
+        instagram: true,
+        facebook: true,
+      }
+
       const postData: any = {
         postContent,
         scheduledDate,
         platforms,
+        ...platformFlags,
       };
 
       if (imageUrl) {

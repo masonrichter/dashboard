@@ -16,12 +16,8 @@ import { usePathname } from 'next/navigation'
 import { format } from 'date-fns'
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: HomeIcon },
-  { name: 'Clients', href: '/clients', icon: UsersIcon },
-  { name: 'Tags', href: '/tags', icon: TagIcon },
-  { name: 'AUM', href: '/aum', icon: CurrencyDollarIcon },
-  { name: 'Campaigns', href: '/mailerlite/campaign', icon: EnvelopeIcon }, 
-  { name: 'Social Media', href: '/buffer', icon: ShareIcon },
+  { name: 'Clients', href: '/clients-overview', icon: UsersIcon },
+  { name: 'Communication', href: '/communication', icon: EnvelopeIcon },
   { name: 'Analytics', href: '/analytics', icon: ChartBarIcon },
 ]
 
@@ -48,18 +44,24 @@ export default function Header() {
                 <li key={item.name}>
                   <Link
                     href={item.href}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      console.log('Click detected for:', item.href)
+                      window.location.href = item.href
+                    }}
                     className={`
-                      flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 relative
+                      flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 relative cursor-pointer
                       ${pathname === item.href 
-                        ? 'text-primary-700 bg-primary-50 shadow-sm' 
+                        ? 'text-blue-700 bg-blue-50 shadow-sm' 
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                       }
                     `}
+                    style={{ pointerEvents: 'auto', zIndex: 100 }}
                   >
                     <item.icon className="mr-2 h-4 w-4" />
                     {item.name}
                     {pathname === item.href && (
-                      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-primary-600 rounded-full"></div>
+                      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-blue-600 rounded-full"></div>
                     )}
                   </Link>
                 </li>

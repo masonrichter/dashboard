@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { CheckCircleIcon, ExclamationTriangleIcon, TagIcon } from '@heroicons/react/24/outline'
+import { CheckCircleIcon, ExclamationTriangleIcon, TagIcon, UserIcon } from '@heroicons/react/24/outline'
 
 interface CopperContactSummary {
   id: number
@@ -173,97 +173,122 @@ export default function TagExplorer() {
           <p>{successMessage}</p>
         </div>
       )}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <div>
-          <label htmlFor="tag-select" className="block text-sm font-medium text-gray-700">
-            Select Copper Tag
-          </label>
-          <select
-            id="tag-select"
-            value={selectedTagId || ''}
-            onChange={(e) => setSelectedTagId(Number(e.target.value))}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+      
+      {/* Split Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Window - Tag and Group Selection Only */}
+        <div className="space-y-6">
+          <div>
+            <label htmlFor="tag-select" className="block text-sm font-medium text-gray-700 mb-2">
+              Select Copper Tag
+            </label>
+            <select
+              id="tag-select"
+              value={selectedTagId || ''}
+              onChange={(e) => setSelectedTagId(Number(e.target.value))}
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            >
+              <option value="">All Tags</option>
+              {tags.map((tag) => (
+                <option key={tag.id} value={tag.id}>
+                  {tag.name}
+                </option>
+              ))}
+            </select>
+            {selectedTagId && (
+              <div className="mt-2 bg-blue-50 rounded-lg p-3">
+                <p className="text-sm font-medium text-gray-700 mb-1">Selected Tag:</p>
+                <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
+                  <TagIcon className="h-4 w-4 mr-1" />
+                  {tags.find(t => t.id === selectedTagId)?.name}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="group-select" className="block text-sm font-medium text-gray-700 mb-2">
+              MailerLite Group for Sync
+            </label>
+            <select
+              id="group-select"
+              value={selectedGroupId || ''}
+              onChange={(e) => setSelectedGroupId(Number(e.target.value))}
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            >
+              <option value="" disabled>Select a group...</option>
+              {mailerLiteGroups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.name}
+                </option>
+              ))}
+            </select>
+            {selectedGroupId && (
+              <div className="mt-2 bg-green-50 rounded-lg p-3">
+                <p className="text-sm font-medium text-gray-700 mb-1">Target Group:</p>
+                <p className="text-sm text-gray-900">{mailerLiteGroups.find(g => g.id === selectedGroupId)?.name}</p>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
+              Search Contacts
+            </label>
+            <div className="relative">
+              <input
+                id="search"
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by name, email, or tag..."
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={handleSyncToMailerLite}
+            disabled={isSending || filteredContacts.length === 0 || !selectedGroupId}
+            className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+              isSending || filteredContacts.length === 0 || !selectedGroupId
+                ? 'bg-green-300 cursor-not-allowed'
+                : 'bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500'
+            }`}
           >
-            <option value="">All Tags</option>
-            {tags.map((tag) => (
-              <option key={tag.id} value={tag.id}>
-                {tag.name}
-              </option>
-            ))}
-          </select>
+            {isSending ? 'Syncing...' : 'Sync to MailerLite'}
+          </button>
         </div>
-        <div>
-          <label htmlFor="group-select" className="block text-sm font-medium text-gray-700">
-            MailerLite Group for Sync
-          </label>
-          <select
-            id="group-select"
-            value={selectedGroupId || ''}
-            onChange={(e) => setSelectedGroupId(Number(e.target.value))}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-          >
-            <option value="" disabled>Select a group...</option>
-            {mailerLiteGroups.map((group) => (
-              <option key={group.id} value={group.id}>
-                {group.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-      <div className="relative mb-6">
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search contacts by name, email, or tag..."
-          className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-        />
-        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-          <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-          </svg>
-        </div>
-      </div>
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium text-gray-900">Filtered Contacts ({filteredContacts.length})</h3>
-        <button
-          onClick={handleSyncToMailerLite}
-          disabled={isSending || filteredContacts.length === 0 || !selectedGroupId}
-          className={`py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-            isSending || filteredContacts.length === 0 || !selectedGroupId
-              ? 'bg-green-300 cursor-not-allowed'
-              : 'bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500'
-          }`}
-        >
-          {isSending ? 'Syncing...' : 'Sync to MailerLite'}
-        </button>
-      </div>
-      <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
-        {filteredContacts.length > 0 ? (
-          <ul role="list" className="divide-y divide-gray-200">
-            {filteredContacts.map((contact) => (
-              <li key={contact.id} className="py-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{contact.name}</p>
-                    <p className="mt-1 text-sm text-gray-500">{contact.emails?.[0]?.email || 'No Email'}</p>
-                  </div>
-                  <div className="flex-shrink-0">
-                    {contact.tags && contact.tags.length > 0 && (
-                      <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
-                        <TagIcon className="h-3 w-3 mr-1" />
-                        {contact.tags.join(', ')}
-                      </span>
-                    )}
-                  </div>
+
+        {/* Right Window - Summary Statistics Only */}
+        <div className="space-y-6">
+          <div className="bg-blue-50 rounded-lg p-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
+              <UserIcon className="h-5 w-5 mr-2 text-blue-600" />
+              Contact Summary
+            </h3>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-blue-600">{filteredContacts.length}</p>
+                  <p className="text-sm text-gray-600">Total Contacts</p>
                 </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-center text-gray-500">No contacts found for this tag or search term.</p>
-        )}
+                <div className="bg-white rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-green-600">
+                    {filteredContacts.filter(c => c.emails && c.emails.length > 0).length}
+                  </p>
+                  <p className="text-sm text-gray-600">With Email</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )

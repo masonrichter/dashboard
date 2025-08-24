@@ -49,6 +49,13 @@
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
   }
   
+  /* Ensure navigation links are clickable */
+  nav a {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    z-index: 51 !important;
+  }
+  
   /* Ensure sidebar is truly frozen and sticky on all pages */
   .sidebar-frozen {
     position: fixed !important;

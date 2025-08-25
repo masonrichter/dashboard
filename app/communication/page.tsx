@@ -101,11 +101,9 @@ export default function CommunicationPage() {
   const [filterType, setFilterType] = useState<'any' | 'all'>('any')
   const [searchMode, setSearchMode] = useState<'tags' | 'name'>('tags')
   const [sending, setSending] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
-  const [lastRemoved, setLastRemoved] = useState<{ id: number, name: string, email: string } | null>(null)
+
   
-  // Pagination for right pane
-  const [currentPage, setCurrentPage] = useState(1)
-  const contactsPerPage = 3
+  // Scrollable recipients list (no pagination needed)
 
   // Load all data
   useEffect(() => {
@@ -273,27 +271,68 @@ export default function CommunicationPage() {
     })
   }
 
-  const handleRemoveRecipient = (contact: Contact) => {
-    // Deselect and store for undo
-    if (selectedContactIds.includes(contact.id)) {
-      toggleContact(contact.id)
-      setLastRemoved({ id: contact.id, name: contact.name, email: contact.email })
-    }
-  }
 
-  const undoLastRemoval = () => {
-    if (!lastRemoved) return
-    const id = lastRemoved.id
-    // Restore selection and clear manual deselection flag
-    setSelectedContactIds(prev => (prev.includes(id) ? prev : [...prev, id]))
-    setManuallyDeselectedIds(prev => prev.filter(x => x !== id))
-    setLastRemoved(null)
-  }
 
   const toggleTag = (tag: string) => {
-    setSelectedTags(prev =>
-      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
-    )
+    setSelectedTags(prev => {
+      const newTags = prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+      
+      // Update selected contacts based on the new tag selection
+      if (prev.includes(tag)) {
+        // Tag was removed - remove contacts that only had this tag
+        setSelectedContactIds(currentSelected => {
+          return currentSelected.filter(contactId => {
+            const contact = contacts.find(c => c.id === contactId)
+            if (!contact) return false
+            
+            // Keep contact if it has other selected tags
+            if (filterType === 'any') {
+              // For 'any' filter: keep if contact has ANY of the remaining selected tags
+              return newTags.some(selectedTag => 
+                contact.tags?.includes(selectedTag) || 
+                (selectedTag === 'No Tag' && (!contact.tags || contact.tags.length === 0))
+              )
+            } else {
+              // For 'all' filter: keep if contact has ALL of the remaining selected tags
+              return newTags.every(selectedTag => 
+                contact.tags?.includes(selectedTag) || 
+                (selectedTag === 'No Tag' && (!contact.tags || contact.tags.length === 0))
+              )
+            }
+          })
+        })
+      } else {
+        // Tag was added - add contacts that match the new tag selection
+        const newMatchingContacts = contacts.filter(contact => {
+          if (filterType === 'any') {
+            // For 'any' filter: include if contact has ANY of the selected tags
+            return newTags.some(selectedTag => 
+              contact.tags?.includes(selectedTag) || 
+              (selectedTag === 'No Tag' && (!contact.tags || contact.tags.length === 0))
+            )
+          } else {
+            // For 'all' filter: include if contact has ALL of the selected tags
+            return newTags.every(selectedTag => 
+              contact.tags?.includes(selectedTag) || 
+              (selectedTag === 'No Tag' && (!contact.tags || contact.tags.length === 0))
+            )
+          }
+        })
+        
+        setSelectedContactIds(currentSelected => {
+          const newSelection = new Set(currentSelected)
+          newMatchingContacts.forEach(contact => {
+            // Only add if not manually deselected
+            if (!manuallyDeselectedIds.includes(contact.id)) {
+              newSelection.add(contact.id)
+            }
+          })
+          return Array.from(newSelection)
+        })
+      }
+      
+      return newTags
+    })
   }
 
   const handleFilterTypeChange = (newFilterType: 'any' | 'all') => {
@@ -389,42 +428,26 @@ export default function CommunicationPage() {
     return matchingContacts.filter(c => !manuallyDeselectedIds.includes(c.id)).length
   }
 
-  // Pagination handlers
-  const totalPages = Math.max(1, Math.ceil(selectedContactIds.length / contactsPerPage))
-  
-  const goToNextPage = () => {
-    console.log('Next page clicked. Current:', currentPage, 'Total:', totalPages)
-    if (currentPage < totalPages) {
-      setCurrentPage(prev => prev + 1)
-    }
+  // Get all selected contacts for scrollable list (excluding manually deselected)
+  const getSelectedContacts = () => {
+    return contacts.filter(c => 
+      selectedContactIds.includes(c.id) && !manuallyDeselectedIds.includes(c.id)
+    )
   }
 
-  const goToPreviousPage = () => {
-    console.log('Previous page clicked. Current:', currentPage, 'Total:', totalPages)
-    if (currentPage > 1) {
-      setCurrentPage(prev => prev - 1)
-    }
-  }
-
-  // Reset to first page when contacts change
-  useEffect(() => {
-    console.log('Resetting to page 1. Selected contacts:', selectedContactIds.length)
-    setCurrentPage(1)
-  }, [selectedContactIds.length])
-
-  // Adjust current page if it's beyond the total pages
-  useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      console.log('Adjusting current page from', currentPage, 'to', totalPages)
-      setCurrentPage(totalPages)
-    }
-  }, [selectedContactIds.length, currentPage, totalPages])
-
-  // Get current page contacts
-  const getCurrentPageContacts = () => {
-    const contactsToShow = searchMode === 'tags' ? contacts.filter(c => selectedContactIds.includes(c.id)) : contacts.filter(c => selectedContactIds.includes(c.id))
-    const startIndex = (currentPage - 1) * contactsPerPage
-    return contactsToShow.slice(startIndex, startIndex + contactsPerPage)
+  // Handle checkbox toggle for recipients
+  const handleRecipientToggle = (contactId: number) => {
+    setSelectedContactIds(prev => {
+      if (prev.includes(contactId)) {
+        // Unchecking - remove from selection and add to manually deselected
+        setManuallyDeselectedIds(prevDeselected => [...prevDeselected, contactId])
+        return prev.filter(id => id !== contactId)
+      } else {
+        // Checking - add to selection and remove from manually deselected
+        setManuallyDeselectedIds(prevDeselected => prevDeselected.filter(id => id !== contactId))
+        return [...prev, contactId]
+      }
+    })
   }
 
   // Step navigation
@@ -547,21 +570,24 @@ export default function CommunicationPage() {
 
   // New function to send selected contacts to MailerLite as a group
   const handleSendToMailerLite = async () => {
-    if (selectedContactIds.length === 0) {
+    // Get the final filtered contacts (excluding manually deselected)
+    const finalSelectedContacts = getSelectedContacts()
+    
+    if (finalSelectedContacts.length === 0) {
       alert('Please select at least one contact to send to MailerLite.')
       return
     }
 
     setSending('loading')
     try {
-      // Get the selected contacts with their details
-      const selectedContacts = contacts.filter(contact => selectedContactIds.includes(contact.id))
+      // Use the final filtered contacts
+      const selectedContacts = finalSelectedContacts
       
       // Prepare data for Make.com webhook
       const validContacts = selectedContacts.filter(contact => contact.email)
       
       const webhookData = {
-        groupName: groupName || `Contacts from Copper (${selectedContactIds.length})`,
+        groupName: groupName || `Contacts from Copper (${finalSelectedContacts.length})`,
         emails: validContacts.map(contact => contact.email),
         subscriberList: validContacts.map(contact => ({
           email: contact.email,
@@ -579,10 +605,10 @@ export default function CommunicationPage() {
         })),
         timestamp: new Date().toISOString(),
         source: 'Glenn Financial Services Dashboard',
-        contactCount: selectedContacts.length,
+        contactCount: finalSelectedContacts.length,
         emailCount: validContacts.length,
         debug: {
-          totalSelected: selectedContactIds.length,
+          totalSelected: finalSelectedContacts.length,
           validEmails: validContacts.length,
           sampleEmails: validContacts.slice(0, 3).map(c => c.email)
         }
@@ -1110,11 +1136,11 @@ export default function CommunicationPage() {
 
 
 
-            {/* Paginated Recipients List */}
+            {/* Scrollable Recipients List */}
             <div className="flex-1 flex flex-col">
               <h3 className="text-lg font-semibold text-gray-900 mb-3">Recipients</h3>
               
-              <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+              <div className="flex-1 overflow-y-auto space-y-2 pr-2 max-h-48">
                 {selectedContactIds.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
                     <EyeIcon className="h-12 w-12 mx-auto mb-3 text-gray-300" />
@@ -1122,69 +1148,33 @@ export default function CommunicationPage() {
                     <p className="text-sm">Use the left panel to select your recipients</p>
                   </div>
                 ) : (
-                  getCurrentPageContacts().map(contact => (
+                  getSelectedContacts().map((contact: Contact) => (
                     <div key={contact.id} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between">
-                        <div>
+                      <div className="flex items-start space-x-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedContactIds.includes(contact.id)}
+                          onChange={() => handleRecipientToggle(contact.id)}
+                          className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <div className="flex-1">
                           <p className="font-medium text-gray-900">{contact.name}</p>
                           <p className="text-sm text-gray-600">{contact.email}</p>
                         </div>
-                        <button
-                          onClick={() => handleRemoveRecipient(contact)}
-                          className="ml-3 px-2 py-1 text-xs bg-red-50 text-red-600 border border-red-200 rounded hover:bg-red-100 transition-colors"
-                          aria-label="Remove recipient"
-                        >
-                          Remove
-                        </button>
                       </div>
                     </div>
                   ))
                 )}
               </div>
 
-              {lastRemoved && (
-                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm flex items-center justify-between">
-                  <div className="text-yellow-800">
-                    Removed {lastRemoved.name} ({lastRemoved.email})
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={undoLastRemoval}
-                      className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200 transition-colors"
-                    >
-                      Undo
-                    </button>
-                    <button
-                      onClick={() => setLastRemoved(null)}
-                      className="px-3 py-1 text-yellow-700 hover:text-yellow-900"
-                      aria-label="Dismiss"
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                </div>
-              )}
 
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="mt-6 flex justify-center space-x-2">
-                  <button
-                    onClick={goToPreviousPage}
-                    disabled={currentPage <= 1}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-200"
-                  >
-                    Previous
-                  </button>
-                  <span className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium">
-                    Page {currentPage} of {totalPages} ({selectedContactIds.length} contacts)
-                  </span>
-                  <button
-                    onClick={goToNextPage}
-                    disabled={currentPage >= totalPages}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-200"
-                  >
-                    Next
-                  </button>
+
+              {/* Recipients count info */}
+              {selectedContactIds.length > 0 && (
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800 text-center">
+                    Showing all {selectedContactIds.length} selected recipients
+                  </p>
                 </div>
               )}
             </div>

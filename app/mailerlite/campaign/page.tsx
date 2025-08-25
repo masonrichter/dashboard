@@ -173,6 +173,12 @@ export default function MailerPage() {
     return filtered
   }, [contacts, searchQuery, selectedTags, filterType])
 
+  // When tags change on Step 1, do not auto-select anyone.
+  // Clear any current selections so users can explicitly choose recipients.
+  useEffect(() => {
+    setSelectedContactIds([])
+  }, [selectedTags])
+
   // Copper selection handlers
   const toggleContact = (id: number) => {
     setSelectedContactIds(prev =>
@@ -370,11 +376,11 @@ export default function MailerPage() {
               {currentStep === 'select' && (
                 <div className="flex-1 flex flex-col">
                   <div className="mb-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">Step 2: Review Selected Filters</h3>
-                    <p className="text-gray-600">Review your selected tags and choose how to filter the results.</p>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">Step 2: Review Selected Filters & Select Contacts</h3>
+                    <p className="text-gray-600">Review your selected tags and choose how to filter the results, then select individual contacts.</p>
                   </div>
                   
-                  <div className="flex-1 flex flex-col justify-center space-y-6">
+                  <div className="flex-1 flex flex-col space-y-4">
                     {selectedTags.length > 0 ? (
                       <div>
                         <p className="text-sm font-medium text-gray-700 mb-3">Selected tags:</p>
@@ -393,10 +399,10 @@ export default function MailerPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="text-center py-8 text-gray-500">
-                        <TagIcon className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                        <p>No tags selected</p>
-                        <p className="text-sm">Go back to step 1 to select tags</p>
+                      <div className="text-center py-4 text-gray-500">
+                        <TagIcon className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                        <p className="text-sm">No tags selected</p>
+                        <p className="text-xs">Go back to step 1 to select tags</p>
                       </div>
                     )}
 
@@ -425,6 +431,77 @@ export default function MailerPage() {
                         </label>
                       </div>
                     </div>
+
+                    {/* Contact Selection Section */}
+                    {filteredContacts.length > 0 && (
+                      <div className="bg-purple-50 p-4 rounded-xl border border-purple-200">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-sm font-semibold text-purple-800">Filtered Contacts ({filteredContacts.length})</span>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={selectAllFiltered}
+                              className="px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 text-xs font-medium"
+                            >
+                              Select All
+                            </button>
+                            <button
+                              onClick={clearSelection}
+                              className="px-3 py-1 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-200 text-xs font-medium"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div className="text-xs text-purple-700 mb-3">
+                          Selected: <span className="font-semibold">{selectedContactIds.length}</span> contacts
+                        </div>
+
+                        <div className="max-h-32 overflow-y-auto space-y-1">
+                          {filteredContacts.slice(0, 10).map(contact => (
+                            <div
+                              key={contact.id}
+                              className={`p-2 rounded-lg border transition-all duration-200 cursor-pointer ${
+                                selectedContactIds.includes(contact.id)
+                                  ? 'border-green-500 bg-green-50'
+                                  : 'border-gray-200 bg-white hover:border-gray-300'
+                              }`}
+                              onClick={() => toggleContact(contact.id)}
+                            >
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedContactIds.includes(contact.id)}
+                                  onChange={() => toggleContact(contact.id)}
+                                  className="rounded text-green-600 h-3 w-3"
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                                <div className="flex flex-col min-w-0 flex-1">
+                                  <span className="text-xs font-medium text-gray-900 truncate">{contact.name}</span>
+                                  <span className="text-xs text-gray-500 truncate">{contact.email}</span>
+                                </div>
+                                {selectedContactIds.includes(contact.id) && (
+                                  <CheckCircleIcon className="h-3 w-3 text-green-600 flex-shrink-0" />
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                          {filteredContacts.length > 10 && (
+                            <div className="text-xs text-gray-500 text-center py-1">
+                              +{filteredContacts.length - 10} more contacts (use the right panel to see all)
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {filteredContacts.length === 0 && selectedTags.length > 0 && (
+                      <div className="text-center py-4 text-gray-500">
+                        <EyeIcon className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                        <p className="text-sm">No contacts match your current filters</p>
+                        <p className="text-xs">Try adjusting your search or tag selection</p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="mt-6 flex space-x-3">
@@ -437,7 +514,8 @@ export default function MailerPage() {
                     </button>
                     <button
                       onClick={nextStep}
-                      className="flex-1 flex items-center justify-center space-x-2 bg-green-600 text-white py-3 px-6 rounded-xl font-semibold hover:bg-green-700 transition-all duration-300"
+                      disabled={selectedContactIds.length === 0}
+                      className="flex-1 flex items-center justify-center space-x-2 bg-green-600 text-white py-3 px-6 rounded-xl font-semibold hover:bg-green-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <span>Continue to Step 3</span>
                       <ArrowRightIcon className="h-5 w-5" />

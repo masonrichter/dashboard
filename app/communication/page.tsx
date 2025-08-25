@@ -101,6 +101,7 @@ export default function CommunicationPage() {
   const [filterType, setFilterType] = useState<'any' | 'all'>('any')
   const [searchMode, setSearchMode] = useState<'tags' | 'name'>('tags')
   const [sending, setSending] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [lastRemoved, setLastRemoved] = useState<{ id: number, name: string, email: string } | null>(null)
   
   // Pagination for right pane
   const [currentPage, setCurrentPage] = useState(1)
@@ -270,6 +271,23 @@ export default function CommunicationPage() {
         return [...prev, id]
       }
     })
+  }
+
+  const handleRemoveRecipient = (contact: Contact) => {
+    // Deselect and store for undo
+    if (selectedContactIds.includes(contact.id)) {
+      toggleContact(contact.id)
+      setLastRemoved({ id: contact.id, name: contact.name, email: contact.email })
+    }
+  }
+
+  const undoLastRemoval = () => {
+    if (!lastRemoved) return
+    const id = lastRemoved.id
+    // Restore selection and clear manual deselection flag
+    setSelectedContactIds(prev => (prev.includes(id) ? prev : [...prev, id]))
+    setManuallyDeselectedIds(prev => prev.filter(x => x !== id))
+    setLastRemoved(null)
   }
 
   const toggleTag = (tag: string) => {
@@ -1062,6 +1080,20 @@ export default function CommunicationPage() {
               Recipients
             </h2>
 
+            {/* Selected Tags at Top */}
+            {searchMode === 'tags' && selectedTags.length > 0 && (
+              <div className="mb-4">
+                <p className="text-sm font-medium text-gray-700 mb-2">Selected tags</p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedTags.map(tag => (
+                    <span key={tag} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Recipients Summary */}
             <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 mb-6">
               <div className="flex items-center justify-between">
@@ -1092,35 +1124,46 @@ export default function CommunicationPage() {
                 ) : (
                   getCurrentPageContacts().map(contact => (
                     <div key={contact.id} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-blue-600 font-semibold text-sm">
-                            {contact.name.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="flex-1">
+                      <div className="flex items-start justify-between">
+                        <div>
                           <p className="font-medium text-gray-900">{contact.name}</p>
                           <p className="text-sm text-gray-600">{contact.email}</p>
-                          {contact.tags && contact.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {contact.tags.slice(0, 2).map(tag => (
-                                <span key={tag} className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
-                                  {tag}
-                                </span>
-                              ))}
-                              {contact.tags.length > 2 && (
-                                <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
-                                  +{contact.tags.length - 2}
-                                </span>
-                              )}
-                            </div>
-                          )}
                         </div>
+                        <button
+                          onClick={() => handleRemoveRecipient(contact)}
+                          className="ml-3 px-2 py-1 text-xs bg-red-50 text-red-600 border border-red-200 rounded hover:bg-red-100 transition-colors"
+                          aria-label="Remove recipient"
+                        >
+                          Remove
+                        </button>
                       </div>
                     </div>
                   ))
                 )}
               </div>
+
+              {lastRemoved && (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm flex items-center justify-between">
+                  <div className="text-yellow-800">
+                    Removed {lastRemoved.name} ({lastRemoved.email})
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={undoLastRemoval}
+                      className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200 transition-colors"
+                    >
+                      Undo
+                    </button>
+                    <button
+                      onClick={() => setLastRemoved(null)}
+                      className="px-3 py-1 text-yellow-700 hover:text-yellow-900"
+                      aria-label="Dismiss"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Pagination */}
               {totalPages > 1 && (

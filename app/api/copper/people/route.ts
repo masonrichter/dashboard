@@ -53,6 +53,49 @@ function getBirthdayFromCustomFields(customFields: any[]): string | null {
   return null;
 }
 
+function getAnniversaryFromCustomFields(customFields: any[]): string | null {
+  if (!customFields || customFields.length === 0) {
+    return null;
+  }
+  
+  for (const field of customFields) {
+    // Check by field name first (case-insensitive)
+    const fieldName = field.name || field.custom_field_definition_name || '';
+    if (fieldName.toLowerCase().includes('anniversary') && field.value) {
+      console.log(`Found anniversary field by name: ${fieldName}, value: ${field.value}`);
+      
+      // Convert timestamp to date string
+      const timestampInMs = field.value * 1000;
+      const dateObject = new Date(timestampInMs);
+      const isoDateString = dateObject.toISOString();
+      const anniversaryString = isoDateString.split('T')[0];
+      
+      console.log(`Converted anniversary: ${anniversaryString}`);
+      return anniversaryString;
+    }
+  }
+  
+  // If we can't find by name, try to find by looking for date fields near the birthday field ID
+  // The anniversary field might be close to the birthday field ID (703490)
+  const possibleAnniversaryIds = [703491, 703492, 703493, 703494, 703495];
+  
+  for (const field of customFields) {
+    if (possibleAnniversaryIds.includes(field.custom_field_definition_id) && field.value) {
+      console.log(`Found potential anniversary field by ID ${field.custom_field_definition_id}: ${field.value}`);
+      
+      const timestampInMs = field.value * 1000;
+      const dateObject = new Date(timestampInMs);
+      const isoDateString = dateObject.toISOString();
+      const anniversaryString = isoDateString.split('T')[0];
+      
+      console.log(`Converted anniversary: ${anniversaryString}`);
+      return anniversaryString;
+    }
+  }
+  
+  return null;
+}
+
 export async function GET(request: NextRequest) {
   try {
     if (!COPPER_API_KEY || !COPPER_USER_EMAIL) {
@@ -86,6 +129,7 @@ export async function GET(request: NextRequest) {
       websites: contact.websites || [],
       customFields: contact.custom_fields || [],
       birthday: getBirthdayFromCustomFields(contact.custom_fields),
+      anniversary: getAnniversaryFromCustomFields(contact.custom_fields),
     }));
     
     return NextResponse.json(contacts);

@@ -33,6 +33,7 @@ interface CopperContact {
   websites: string[]
   customFields: any[]
   birthday: string | null
+  anniversary: string | null
 }
 
 interface Client {
@@ -221,6 +222,7 @@ export default function ClientsOverviewPage() {
   const [copperContacts, setCopperContacts] = useState<CopperContact[]>([])
   const [loading, setLoading] = useState(true)
   const [birthdayPage, setBirthdayPage] = useState(0) // Add pagination state for birthdays
+  const [anniversaryPage, setAnniversaryPage] = useState(0) // Add pagination state for anniversaries
 
   // Fetch Copper contacts on component mount
   useEffect(() => {
@@ -266,20 +268,42 @@ export default function ClientsOverviewPage() {
     const allUpcomingBirthdays = copperContacts
       .filter(contact => contact.birthday)
       .map(contact => {
-        const birthday = new Date(contact.birthday!)
+        // Parse birthday string (format: YYYY-MM-DD)
+        const [year, month, day] = contact.birthday!.split('-').map(Number)
+        const birthday = new Date(year, month - 1, day)
         
         // Skip if birthday is invalid or in the future (more than 100 years from now)
         const currentYear = today.getFullYear()
-        if (birthday.getFullYear() > currentYear + 100 || birthday.getFullYear() < 1900) {
+        if (year > currentYear + 100 || year < 1900) {
           return null
         }
         
-        const nextBirthday = new Date(today.getFullYear(), birthday.getMonth(), birthday.getDate())
+        // Create next birthday date using the same month and day as the original birthday
+        const nextBirthday = new Date(today.getFullYear(), month - 1, day)
+        
+        // If this year's birthday has already passed, use next year
         if (nextBirthday < today) {
           nextBirthday.setFullYear(today.getFullYear() + 1)
         }
         
-        const daysUntil = Math.ceil((nextBirthday.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+        // Calculate days until birthday (using UTC to avoid timezone issues)
+        const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()))
+        const nextBirthdayUTC = new Date(Date.UTC(nextBirthday.getFullYear(), nextBirthday.getMonth(), nextBirthday.getDate()))
+        const daysUntil = Math.ceil((nextBirthdayUTC.getTime() - todayUTC.getTime()) / (1000 * 60 * 60 * 24))
+        
+        // Debug logging for first few birthdays
+        if (contact.id <= 5) {
+          console.log(`Birthday calculation for ${contact.name}:`, {
+            originalBirthday: contact.birthday,
+            parsedYear: year,
+            parsedMonth: month,
+            parsedDay: day,
+            nextBirthday: nextBirthday.toISOString(),
+            todayUTC: todayUTC.toISOString(),
+            nextBirthdayUTC: nextBirthdayUTC.toISOString(),
+            daysUntil
+          })
+        }
         
         return {
           id: contact.id,
@@ -314,14 +338,78 @@ export default function ClientsOverviewPage() {
       birthdays: paddedBirthdays.map(b => b ? { name: b.name, birthday: b.birthday } : 'null')
     })
     
-    // Get upcoming anniversaries (next 30 days) - using mock data
-    const upcomingAnniversaries = mockClients.filter(client => {
-      const anniversary = new Date(client.anniversary)
-      const nextAnniversary = new Date(today.getFullYear(), anniversary.getMonth(), anniversary.getDate())
-      if (nextAnniversary < today) {
-        nextAnniversary.setFullYear(today.getFullYear() + 1)
-      }
-      return nextAnniversary >= today && nextAnniversary <= oneYearFromNow
+    // Get upcoming anniversaries from Copper contacts (next 365 days)
+    const allUpcomingAnniversaries = copperContacts
+      .filter(contact => contact.anniversary)
+      .map(contact => {
+        // Parse anniversary string (format: YYYY-MM-DD)
+        const [year, month, day] = contact.anniversary!.split('-').map(Number)
+        const anniversary = new Date(year, month - 1, day)
+        
+        // Skip if anniversary is invalid or in the future (more than 100 years from now)
+        const currentYear = today.getFullYear()
+        if (year > currentYear + 100 || year < 1900) {
+          return null
+        }
+        
+        // Create next anniversary date using the same month and day as the original anniversary
+        const nextAnniversary = new Date(today.getFullYear(), month - 1, day)
+        
+        // If this year's anniversary has already passed, use next year
+        if (nextAnniversary < today) {
+          nextAnniversary.setFullYear(today.getFullYear() + 1)
+        }
+        
+        // Calculate days until anniversary (using UTC to avoid timezone issues)
+        const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()))
+        const nextAnniversaryUTC = new Date(Date.UTC(nextAnniversary.getFullYear(), nextAnniversary.getMonth(), nextAnniversary.getDate()))
+        const daysUntil = Math.ceil((nextAnniversaryUTC.getTime() - todayUTC.getTime()) / (1000 * 60 * 60 * 24))
+        
+        // Debug logging for first few anniversaries
+        if (contact.id <= 5) {
+          console.log(`Anniversary calculation for ${contact.name}:`, {
+            originalAnniversary: contact.anniversary,
+            parsedYear: year,
+            parsedMonth: month,
+            parsedDay: day,
+            nextAnniversary: nextAnniversary.toISOString(),
+            todayUTC: todayUTC.toISOString(),
+            nextAnniversaryUTC: nextAnniversaryUTC.toISOString(),
+            daysUntil
+          })
+        }
+        
+        return {
+          id: contact.id,
+          name: contact.name,
+          anniversary: contact.anniversary!,
+          daysUntil
+        }
+      })
+      .filter(anniversary => anniversary !== null && anniversary.daysUntil <= 365)
+      .sort((a, b) => a!.daysUntil - b!.daysUntil)
+    
+    console.log('Processed anniversaries:', {
+      totalUpcoming: allUpcomingAnniversaries.length,
+      firstFew: allUpcomingAnniversaries.slice(0, 5).map(a => a ? { name: a.name, anniversary: a.anniversary, daysUntil: a.daysUntil } : null)
+    })
+    
+    // Get paginated anniversaries (3 per page)
+    const anniversariesPerPage = 3
+    const anniversaryStartIndex = anniversaryPage * anniversariesPerPage
+    const upcomingAnniversaries = allUpcomingAnniversaries.slice(anniversaryStartIndex, anniversaryStartIndex + anniversariesPerPage)
+    
+    // Ensure we always have exactly 3 items per page
+    const paddedAnniversaries = Array.from({ length: anniversariesPerPage }, (_, index) => {
+      return upcomingAnniversaries[index] || null
+    })
+    
+    console.log(`Page ${anniversaryPage + 1} anniversaries:`, {
+      startIndex: anniversaryStartIndex,
+      endIndex: anniversaryStartIndex + anniversariesPerPage,
+      upcomingAnniversaries: upcomingAnniversaries.length,
+      paddedAnniversaries: paddedAnniversaries.length,
+      anniversaries: paddedAnniversaries.map(a => a ? { name: a.name, anniversary: a.anniversary } : 'null')
     })
     
     // Get upcoming events (next 30 days)
@@ -338,10 +426,10 @@ export default function ClientsOverviewPage() {
       averageAUMPerAccount,
       rmdClients,
       upcomingBirthdays: paddedBirthdays,
-      upcomingAnniversaries,
+      upcomingAnniversaries: paddedAnniversaries,
       upcomingEvents
     }
-  }, [copperContacts, birthdayPage])
+  }, [copperContacts, birthdayPage, anniversaryPage])
 
   // Format currency
   const formatCurrency = (amount: number) => {
@@ -385,6 +473,29 @@ export default function ClientsOverviewPage() {
       })
     } catch (error) {
       console.error('Error formatting birthday:', dateString, error);
+      return 'Error';
+    }
+  }
+
+  // Format anniversary (month and day only)
+  const formatAnniversary = (dateString: string) => {
+    try {
+      // Parse the date as a local date to avoid timezone issues
+      const [year, month, day] = dateString.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      
+      // Validate the date
+      if (isNaN(date.getTime())) {
+        console.error('Invalid date:', dateString);
+        return 'Invalid';
+      }
+      
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric'
+      })
+    } catch (error) {
+      console.error('Error formatting anniversary:', dateString, error);
       return 'Error';
     }
   }
@@ -470,7 +581,7 @@ export default function ClientsOverviewPage() {
                   </div>
                   <div className="text-right">
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-pink-100 text-pink-700">
-                      {birthday.daysUntil} days
+                      {birthday.daysUntil === 0 ? 'Today!' : `${birthday.daysUntil} days`}
                     </span>
                   </div>
                 </div>
@@ -529,19 +640,86 @@ export default function ClientsOverviewPage() {
             </div>
           </div>
           <div className="space-y-4">
-            {Array.from({ length: 3 }, (_, index) => (
-              <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
-                <div className="flex items-center space-x-4">
-                  <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                    <span className="text-gray-400 text-lg">-</span>
+            {summaryData.upcomingAnniversaries.map((anniversary, index) => {
+              if (!anniversary) {
+                return (
+                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                        <span className="text-gray-400 text-lg">-</span>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-400">No upcoming anniversary</div>
+                        <div className="text-xs text-gray-400">-</div>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-sm font-medium text-gray-400">No upcoming anniversary</div>
-                    <div className="text-xs text-gray-400">-</div>
+                )
+              }
+              return (
+                <div key={anniversary.id} className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-white rounded-lg border border-blue-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center shadow-sm">
+                      <span className="text-white text-xs font-bold leading-none text-center">
+                        {formatAnniversary(anniversary.anniversary)}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-gray-900">{anniversary.name}</div>
+                      <div className="text-xs text-gray-500 font-medium">
+                        {formatAnniversary(anniversary.anniversary)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                      {anniversary.daysUntil === 0 ? 'Today!' : `${anniversary.daysUntil} days`}
+                    </span>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
+          </div>
+          
+          {/* Pagination Controls */}
+          <div className="flex justify-center items-center space-x-4 mt-6 pt-4 border-t border-gray-100">
+            <button
+              onClick={() => setAnniversaryPage(Math.max(0, anniversaryPage - 1))}
+              disabled={anniversaryPage === 0}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                anniversaryPage === 0
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 hover:border-blue-300 shadow-sm'
+              }`}
+            >
+              ← Previous
+            </button>
+            <div className="flex items-center space-x-2">
+              {[0, 1, 2].map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setAnniversaryPage(page)}
+                  className={`w-8 h-8 rounded-full text-sm font-medium transition-all duration-200 ${
+                    anniversaryPage === page
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {page + 1}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setAnniversaryPage(Math.min(2, anniversaryPage + 1))}
+              disabled={anniversaryPage === 2}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                anniversaryPage === 2
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 hover:border-blue-300 shadow-sm'
+              }`}
+            >
+              Next →
+            </button>
           </div>
         </div>
 

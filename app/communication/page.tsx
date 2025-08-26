@@ -199,10 +199,8 @@ export default function CommunicationPage() {
 
     // Filter by selected tags
     if (selectedTags.length > 0) {
-      // In Step 2, automatically use 'any' filter type
-      const effectiveFilterType = currentStep === 'select' ? 'any' : filterType
-      
-      if (effectiveFilterType === 'any') {
+      // Use the actual filter type selection
+      if (filterType === 'any') {
         filtered = filtered.filter(c => 
           c.tags?.some(tag => selectedTags.includes(tag)) || 
           (c.tags?.length === 0 && selectedTags.includes('No Tag'))
@@ -224,30 +222,43 @@ export default function CommunicationPage() {
 
   // Auto-select contacts when using tag filtering
   useEffect(() => {
-    if (searchMode === 'tags') {
-      if (selectedTags.length > 0) {
-        // Only auto-select NEW contacts that weren't previously selected
-        // This preserves manual deselections when new tags are added
-        const filteredIds = filteredContacts.map(c => c.id)
-        setSelectedContactIds(prev => {
-          // Get the set of currently selected IDs
-          const currentSelected = new Set(prev)
-          // Add new filtered IDs that weren't previously selected and aren't manually deselected
-          filteredIds.forEach(id => {
-            if (!manuallyDeselectedIds.includes(id)) {
-              currentSelected.add(id)
-            }
-          })
-          return Array.from(currentSelected)
+    if (searchMode === 'tags' && selectedTags.length > 0) {
+      // Recalculate selected contacts based on current filter type and selected tags
+      const matchingContacts = contacts.filter(contact => {
+        if (filterType === 'any') {
+          // For 'any' filter: include if contact has ANY of the selected tags
+          return selectedTags.some(tag => 
+            contact.tags?.includes(tag) || (tag === 'No Tag' && (!contact.tags || contact.tags.length === 0))
+          )
+        } else {
+          // For 'all' filter: include if contact has ALL of the selected tags
+          return selectedTags.every(tag => 
+            contact.tags?.includes(tag) || (tag === 'No Tag' && (!contact.tags || contact.tags.length === 0))
+          )
+        }
+      })
+      
+      const matchingIds = matchingContacts.map(c => c.id)
+      
+      setSelectedContactIds(prev => {
+        const newSelection = new Set(prev)
+        
+        // Add contacts that match the current filter and aren't manually deselected
+        matchingIds.forEach(id => {
+          if (!manuallyDeselectedIds.includes(id)) {
+            newSelection.add(id)
+          }
         })
-      } else {
-        // Clear selection when no tags are selected
-        setSelectedContactIds([])
-        setManuallyDeselectedIds([])
-        setAutoDeselectedByAllFilter([])
-      }
+        
+        return Array.from(newSelection)
+      })
+    } else if (searchMode === 'tags' && selectedTags.length === 0) {
+      // Clear selection when no tags are selected
+      setSelectedContactIds([])
+      setManuallyDeselectedIds([])
+      setAutoDeselectedByAllFilter([])
     }
-  }, [filteredContacts, searchMode, selectedTags, manuallyDeselectedIds])
+  }, [contacts, searchMode, selectedTags, filterType, manuallyDeselectedIds])
 
   // Clear selection when switching to name search mode
   useEffect(() => {
@@ -320,9 +331,11 @@ export default function CommunicationPage() {
         })
         
         setSelectedContactIds(currentSelected => {
-          const newSelection = new Set(currentSelected)
+          // Start with a fresh selection based on the new tags and current filter type
+          const newSelection = new Set<number>()
+          
+          // Add only contacts that match the current filter criteria and aren't manually deselected
           newMatchingContacts.forEach(contact => {
-            // Only add if not manually deselected
             if (!manuallyDeselectedIds.includes(contact.id)) {
               newSelection.add(contact.id)
             }
@@ -338,44 +351,45 @@ export default function CommunicationPage() {
   const handleFilterTypeChange = (newFilterType: 'any' | 'all') => {
     setFilterType(newFilterType)
     
-    if (newFilterType === 'all') {
-      // If switching to 'all' filter, automatically deselect contacts that don't match
-      const contactsToKeep = contacts.filter(contact => {
-        // Check if contact has ALL selected tags
-        return selectedTags.every(tag => 
-          contact.tags?.includes(tag) || (tag === 'No Tag' && (!contact.tags || contact.tags.length === 0))
-        )
-      })
-      
-      const idsToKeep = contactsToKeep.map(c => c.id)
-      
-      // Update selected contacts to only include those that match ALL tags
-      setSelectedContactIds(prev => {
-        const automaticallyDeselected = prev.filter(id => !idsToKeep.includes(id))
-        
-        // Track which contacts were automatically deselected by the ALL filter
-        if (automaticallyDeselected.length > 0) {
-          setAutoDeselectedByAllFilter(automaticallyDeselected)
+    // Recalculate selected contacts based on the new filter type
+    if (selectedTags.length > 0) {
+      const matchingContacts = contacts.filter(contact => {
+        if (newFilterType === 'any') {
+          // For 'any' filter: include if contact has ANY of the selected tags
+          return selectedTags.some(tag => 
+            contact.tags?.includes(tag) || (tag === 'No Tag' && (!contact.tags || contact.tags.length === 0))
+          )
+        } else {
+          // For 'all' filter: include if contact has ALL of the selected tags
+          return selectedTags.every(tag => 
+            contact.tags?.includes(tag) || (tag === 'No Tag' && (!contact.tags || contact.tags.length === 0))
+          )
         }
-        
-        return prev.filter(id => idsToKeep.includes(id))
       })
-    } else if (newFilterType === 'any') {
-      // If switching to 'any' filter, restore only contacts that were automatically deselected by 'all' filter
+      
+      const matchingIds = matchingContacts.map(c => c.id)
+      
+      // Update selected contacts to only include those that match the new filter type
       setSelectedContactIds(prev => {
-        const newSelection = new Set(prev)
+        // Start with a fresh selection based on the new filter type
+        const newSelection = new Set<number>()
         
-        // Add back only contacts that were automatically deselected by ALL filter
-        autoDeselectedByAllFilter.forEach(id => {
-          newSelection.add(id)
+        // Add only contacts that match the new filter type and aren't manually deselected
+        matchingIds.forEach(id => {
+          if (!manuallyDeselectedIds.includes(id)) {
+            newSelection.add(id)
+          }
         })
         
         return Array.from(newSelection)
       })
-      
-      // Clear the auto-deselected list since we've restored them
-      setAutoDeselectedByAllFilter([])
+    } else {
+      // If no tags are selected, clear the selection
+      setSelectedContactIds([])
     }
+    
+    // Clear the auto-deselected list since we're recalculating everything
+    setAutoDeselectedByAllFilter([])
   }
 
   const selectAllFiltered = () => {
@@ -454,35 +468,20 @@ export default function CommunicationPage() {
   const nextStep = () => {
     console.log('nextStep called, currentStep:', currentStep, 'searchMode:', searchMode)
     console.log('Current URL:', window.location.href)
-    const steps: Step[] = ['select', 'filter', 'compose']
-    const currentIndex = steps.indexOf(currentStep)
     
-    // Skip Step 2 (filter) if using name search
-    if (currentStep === 'select' && searchMode === 'name') {
-      console.log('Skipping to compose step')
+    // Always go directly from select to compose (skip filter step)
+    if (currentStep === 'select') {
+      console.log('Moving directly to compose step')
       setCurrentStep('compose')
       return
-    }
-    
-    if (currentIndex < steps.length - 1) {
-      const nextStepName = steps[currentIndex + 1]
-      console.log('Moving to next step:', nextStepName)
-      setCurrentStep(nextStepName)
     }
   }
 
   const prevStep = () => {
-    const steps: Step[] = ['select', 'filter', 'compose']
-    const currentIndex = steps.indexOf(currentStep)
-    
-    // Skip Step 2 (filter) if using name search
-    if (currentStep === 'compose' && searchMode === 'name') {
+    // Always go directly from compose to select (skip filter step)
+    if (currentStep === 'compose') {
       setCurrentStep('select')
       return
-    }
-    
-    if (currentIndex > 0) {
-      setCurrentStep(steps[currentIndex - 1])
     }
   }
 
@@ -672,10 +671,7 @@ export default function CommunicationPage() {
   return (
     <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       <div className="container mx-auto px-6 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Communication Hub</h1>
-          <p className="text-gray-600 text-lg">Manage email campaigns and social media posts</p>
-        </div>
+
 
         {/* Tab Navigation */}
         <div className="mb-8">
@@ -712,60 +708,55 @@ export default function CommunicationPage() {
         </div>
 
         {activeTab === 'email' ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className={`grid gap-8 ${currentStep === 'compose' ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-2'}`}>
           {/* LEFT BOX: Step-by-Step Process */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-soft border border-white/20 p-8 h-[600px] flex flex-col">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-              <CursorArrowRaysIcon className="h-6 w-6 mr-3 text-blue-600" />
-              Campaign Creation Steps
-            </h2>
+          <div className={`bg-white/80 backdrop-blur-sm rounded-2xl shadow-soft border border-white/20 p-6 h-[600px] flex flex-col ${currentStep === 'compose' ? 'lg:col-span-1' : ''}`}>
 
-            {/* Step Progress Indicator */}
-            <div className="flex items-center justify-center mb-6">
-              <div className="flex items-center">
-                {['select', 'filter', 'compose'].map((step, index) => (
-                  <div key={step} className="flex items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                      currentStep === step 
-                        ? 'bg-blue-600 text-white' 
-                        : index < ['select', 'filter', 'compose'].indexOf(currentStep)
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-300 text-gray-600'
-                    }`}>
-                      {index + 1}
-                    </div>
-                    {index < 2 && (
-                      <div className={`w-16 h-1 mx-2 ${
-                        index < ['select', 'filter', 'compose'].indexOf(currentStep)
-                          ? 'bg-green-600'
-                          : 'bg-gray-300'
-                      }`}></div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
 
             {/* Step Content */}
             <div className="flex-1 flex flex-col">
               {/* Step 1: Search/Select Based on Method */}
               {currentStep === 'select' && (
                 <div className="flex-1 flex flex-col">
-                  <div className="mb-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                      Step 1: Search and Select Tags
-                    </h3>
-                    <p className="text-gray-600">
-                      Search for tags and select the ones you want to filter by.
-                    </p>
-                  </div>
-                  
-                  <div className="flex-1 flex flex-col justify-center space-y-6">
+                  <div className="flex-1 flex flex-col space-y-1">
                     {/* Show different content based on search mode */}
                     {searchMode === 'tags' ? (
                       <>
+                        {/* Filter Type Selection */}
+                        <div className="bg-gray-50 p-2 rounded-lg mb-1">
+                          <p className="text-sm font-medium text-gray-700 mb-2">Filter type:</p>
+                          <div className="flex space-x-4">
+                            <label className="flex items-center">
+                              <input
+                                type="radio"
+                                value="any"
+                                checked={filterType === 'any'}
+                                onChange={(e) => handleFilterTypeChange(e.target.value as 'any' | 'all')}
+                                className="mr-2"
+                              />
+                              <span className="text-sm text-gray-700">ANY tag</span>
+                            </label>
+                            <label className="flex items-center">
+                              <input
+                                type="radio"
+                                value="all"
+                                checked={filterType === 'all'}
+                                onChange={(e) => handleFilterTypeChange(e.target.value as 'any' | 'all')}
+                                className="mr-2"
+                              />
+                              <span className="text-sm text-gray-700">ALL tags</span>
+                            </label>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {filterType === 'any' 
+                              ? 'ANY: Include contacts with any selected tag' 
+                              : 'ALL: Include contacts with all selected tags'
+                            }
+                          </p>
+                        </div>
+
                         {/* Tag Search */}
-                        <div className="bg-gray-50 p-4 rounded-xl">
+                        <div className="bg-gray-50 p-3 rounded-xl">
                           <p className="text-sm font-medium text-gray-700 mb-3">Search tags:</p>
                           <div className="relative">
                             <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -780,9 +771,9 @@ export default function CommunicationPage() {
                         </div>
 
                         {/* Tag Selection */}
-                        <div className="bg-gray-50 p-4 rounded-xl">
-                          <p className="text-sm font-medium text-gray-700 mb-3">Available tags:</p>
-                          <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                        <div className="bg-gray-50 p-3 rounded-xl flex-1">
+                          <p className="text-sm font-medium text-gray-700 mb-2">Available tags:</p>
+                          <div className="flex flex-wrap gap-1.5 overflow-y-auto scrollbar-hide" style={{ maxHeight: 'calc(100% - 25px)' }}>
                             {allTags
                               .filter(tag => !searchQuery || tag.toLowerCase().includes(searchQuery.toLowerCase()))
                               .map(tag => (
@@ -859,27 +850,19 @@ export default function CommunicationPage() {
 
                   <div className="mt-6 flex space-x-3">
                     <button
-                      onClick={prevStep}
-                      className="flex-1 flex items-center justify-center space-x-2 bg-gray-200 text-gray-700 py-3 px-6 rounded-xl font-semibold hover:bg-gray-300 transition-all duration-300"
-                    >
-                      <ArrowLeftIcon className="h-5 w-5" />
-                      <span>Back</span>
-                    </button>
-                    <button
                       onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
                         console.log('Continue to Step 2 button clicked')
                         nextStep()
                       }}
-                      disabled={
-                        (searchMode === 'tags' && selectedTags.length === 0) || 
-                        (searchMode === 'name' && (!searchQuery.trim() || selectedContactIds.length === 0)) ||
-                        (searchMode === 'tags' && selectedContactIds.length === 0)
-                      }
-                      className="flex-1 flex items-center justify-center space-x-2 bg-green-600 text-white py-3 px-6 rounded-xl font-semibold hover:bg-green-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                              disabled={
+                          (searchMode === 'tags' && (selectedTags.length === 0 || getStep2RecipientCount() === 0)) || 
+                          (searchMode === 'name' && (!searchQuery.trim() || selectedContactIds.length === 0))
+                        }
+                      className="w-full flex items-center justify-center space-x-2 bg-green-600 text-white py-3 px-6 rounded-xl font-semibold hover:bg-green-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <span>Continue to Step 2</span>
+                      <span>Next</span>
                       <ArrowRightIcon className="h-5 w-5" />
                     </button>
                   </div>
@@ -976,92 +959,66 @@ export default function CommunicationPage() {
               {/* Step 3: Send to MailerLite */}
               {currentStep === 'compose' && (
                 <div className="flex-1 flex flex-col">
-                  <div className="mb-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                      Step 3: Send to MailerLite
-                    </h3>
-                    <p className="text-gray-600">
-                      Send your selected contacts to MailerLite for email campaigns.
-                    </p>
-                  </div>
-                  
-                  <div className="flex-1 flex flex-col justify-center">
-                    {/* Summary Card */}
-                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-8 rounded-xl border border-blue-200 shadow-sm">
-                      <div className="text-center">
-                        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <UserGroupIcon className="h-8 w-8 text-blue-600" />
-                        </div>
-                        
-                        <h4 className="text-xl font-semibold text-gray-900 mb-2">
-                          Ready to Send to MailerLite
-                        </h4>
-                        
-                        <p className="text-gray-600 mb-6">
-                          Your selected contacts will be sent to MailerLite where you can create and manage email campaigns.
-                        </p>
-                        
-                                                 <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6">
-                           <div className="flex items-center justify-between mb-2">
-                             <span className="text-sm font-medium text-gray-700">Selected Contacts</span>
-                             <span className="text-2xl font-bold text-blue-600">{selectedContactIds.length}</span>
-                           </div>
-                           <div className="flex items-center justify-between">
-                             <span className="text-sm font-medium text-gray-700">Filter Type</span>
-                             <span className="text-sm font-semibold text-purple-600 uppercase">
-                               {searchMode === 'tags' ? filterType : 'name search'}
-                             </span>
-                           </div>
-                           {searchMode === 'tags' && selectedTags.length > 0 && (
-                             <div className="mt-2">
-                               <span className="text-sm font-medium text-gray-700">Tags: </span>
-                               <span className="text-sm text-purple-600">
-                                 {selectedTags.join(', ')}
-                               </span>
-                             </div>
-                           )}
-                         </div>
-                         
-                         {/* Group Name Input */}
-                         <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6">
-                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                             MailerLite Group Name
-                           </label>
-                           <input
-                             type="text"
-                             className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
-                             placeholder="Enter group name (optional)..."
-                             value={groupName}
-                             onChange={(e) => setGroupName(e.target.value)}
-                           />
-                           <p className="text-xs text-gray-500 mt-1">
-                             Leave blank to use default name: "Contacts from Copper ({selectedContactIds.length})"
-                           </p>
-                         </div>
-                        
-                        <button
-                          onClick={handleSendToMailerLite}
-                          disabled={sending === 'loading'}
-                          className="w-full flex items-center justify-center space-x-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-8 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg"
-                        >
-                          {sending === 'loading' ? (
-                            <>
-                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
-                              <span>Sending to MailerLite...</span>
-                            </>
-                          ) : (
-                            <>
-                              <PaperAirplaneIcon className="h-6 w-6" />
-                              <span>Send {selectedContactIds.length} Contacts to MailerLite</span>
-                            </>
-                          )}
-                        </button>
-                        
-                        <p className="text-xs text-gray-500 mt-4">
-                          You'll be able to create email campaigns in the MailerLite dashboard once the contacts are synced.
-                        </p>
+                  <div className="flex flex-col space-y-6">
+                    {/* Selected Contacts Info */}
+                    <div className="bg-white p-4 rounded-lg border border-gray-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">Selected Contacts</span>
+                        <span className="text-2xl font-bold text-blue-600">{selectedContactIds.length}</span>
                       </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">Filter Type</span>
+                        <span className="text-sm font-semibold text-purple-600 uppercase">
+                          {searchMode === 'tags' ? filterType : 'name search'}
+                        </span>
+                      </div>
+                      {searchMode === 'tags' && selectedTags.length > 0 && (
+                        <div className="mt-2">
+                          <span className="text-sm font-medium text-gray-700">Tags: </span>
+                          <span className="text-sm text-purple-600">
+                            {selectedTags.join(', ')}
+                          </span>
+                        </div>
+                      )}
                     </div>
+                    
+                    {/* Group Name Input */}
+                    <div className="bg-white p-4 rounded-lg border border-gray-200">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        MailerLite Group Name
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
+                        placeholder="Enter group name (optional)..."
+                        value={groupName}
+                        onChange={(e) => setGroupName(e.target.value)}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Leave blank to use default name: "Contacts from Copper ({selectedContactIds.length})"
+                      </p>
+                    </div>
+                    
+                    {/* Send Button */}
+                    <button
+                      onClick={handleSendToMailerLite}
+                      disabled={sending === 'loading'}
+                      className="w-full flex items-center justify-center space-x-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-8 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg"
+                    >
+                      {sending === 'loading' ? (
+                        <>
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                          <span>Sending to MailerLite...</span>
+                        </>
+                      ) : (
+                        <>
+                          <PaperAirplaneIcon className="h-6 w-6" />
+                          <span>Send {selectedContactIds.length} Contacts to MailerLite</span>
+                        </>
+                      )}
+                    </button>
+                    
+
                   </div>
 
                   <div className="mt-6 flex space-x-3">
@@ -1100,16 +1057,19 @@ export default function CommunicationPage() {
           </div>
 
           {/* RIGHT BOX: Recipients & Campaign Content */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-soft border border-white/20 p-8 h-[600px] flex flex-col">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-              <UsersIcon className="h-6 w-6 mr-3 text-green-600" />
-              Recipients
-            </h2>
+          {currentStep !== 'compose' && (
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-soft border border-white/20 p-6 h-[600px] flex flex-col relative">
+            {/* Recipient Count at Top Right */}
+            <div className="absolute top-4 right-4">
+              <div className="bg-blue-100 px-3 py-1 rounded-full">
+                <span className="text-lg font-bold text-blue-600">{selectedContactIds.length}</span>
+              </div>
+            </div>
 
             {/* Selected Tags at Top */}
             {searchMode === 'tags' && selectedTags.length > 0 && (
-              <div className="mb-4">
-                <p className="text-sm font-medium text-gray-700 mb-2">Selected tags</p>
+              <div className="mb-2">
+                <p className="text-sm font-medium text-gray-700 mb-1">Selected tags</p>
                 <div className="flex flex-wrap gap-2">
                   {selectedTags.map(tag => (
                     <span key={tag} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
@@ -1120,27 +1080,14 @@ export default function CommunicationPage() {
               </div>
             )}
 
-            {/* Recipients Summary */}
-            <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 mb-6">
-              <div className="flex items-center justify-between">
-                <span className="text-lg font-semibold text-blue-800">Selected Recipients</span>
-                <span className="text-3xl font-bold text-blue-600">{selectedContactIds.length}</span>
-              </div>
-              <p className="text-xs text-blue-600 mt-1">
-                {searchMode === 'tags' 
-                  ? `Contacts with ${selectedTags.length} selected tag(s) using ${filterType.toUpperCase()} filter`
-                  : `Contacts matching "${searchQuery}"`
-                }
-              </p>
-            </div>
+
 
 
 
             {/* Scrollable Recipients List */}
             <div className="flex-1 flex flex-col">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Recipients</h3>
               
-              <div className="flex-1 overflow-y-auto space-y-2 pr-2 max-h-48">
+              <div className="flex-1 overflow-y-auto space-y-1 pr-2" style={{ maxHeight: '500px' }}>
                 {selectedContactIds.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
                     <EyeIcon className="h-12 w-12 mx-auto mb-3 text-gray-300" />
@@ -1149,17 +1096,16 @@ export default function CommunicationPage() {
                   </div>
                 ) : (
                   getSelectedContacts().map((contact: Contact) => (
-                    <div key={contact.id} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                      <div className="flex items-start space-x-3">
+                    <div key={contact.id} className="bg-white rounded-lg p-2 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-center space-x-2">
                         <input
                           type="checkbox"
                           checked={selectedContactIds.includes(contact.id)}
                           onChange={() => handleRecipientToggle(contact.id)}
-                          className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                         />
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-900">{contact.name}</p>
-                          <p className="text-sm text-gray-600">{contact.email}</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{contact.name}</p>
                         </div>
                       </div>
                     </div>
@@ -1169,16 +1115,10 @@ export default function CommunicationPage() {
 
 
 
-              {/* Recipients count info */}
-              {selectedContactIds.length > 0 && (
-                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-blue-800 text-center">
-                    Showing all {selectedContactIds.length} selected recipients
-                  </p>
-                </div>
-              )}
+
             </div>
           </div>
+          )}
         </div>
         ) : (
           /* SOCIAL MEDIA TAB */

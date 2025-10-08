@@ -66,8 +66,8 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    // Get a list of all 'sent' campaigns
-    const campaignsResponse = await axios.get(`${MAILERLITE_API_URL}/campaigns?filter[status]=sent`, {
+    // Get a list of all 'sent' campaigns with improved parameters
+    const campaignsResponse = await axios.get(`${MAILERLITE_API_URL}/campaigns?filter[status]=sent&limit=200&sort=-created_at`, {
       headers: {
         'Authorization': `Bearer ${MAILERLITE_API_KEY}`,
         'Content-Type': 'application/json',
@@ -77,23 +77,28 @@ export async function GET(request: NextRequest) {
 
     const sentCampaigns = campaignsResponse.data.data;
 
-    const campaignsWithDetails = await Promise.all(
-      sentCampaigns.map(async (campaign: any) => {
-        try {
-          const response = await axios.get(`${MAILERLITE_API_URL}/campaigns/${campaign.id}`, {
-            headers: {
-              'Authorization': `Bearer ${MAILERLITE_API_KEY}`,
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-          });
-          return response.data.data;
-        } catch (error) {
-          console.error(`Error fetching campaign ${campaign.id}:`, error);
-          return null;
-        }
-      })
-    ).then(results => results.filter(campaign => campaign !== null));
+    // Use the campaign data directly instead of making additional API calls
+    const campaignsWithDetails = sentCampaigns.map((campaign: any) => {
+      return {
+        id: campaign.id,
+        name: campaign.name,
+        status: campaign.status,
+        subject: campaign.subject,
+        created_at: campaign.created_at,
+        updated_at: campaign.updated_at,
+        send_time: campaign.send_time,
+        finished_at: campaign.finished_at,
+        recipients_count: campaign.recipients_count || 0,
+        opened_count: campaign.opened_count || 0,
+        clicked_count: campaign.clicked_count || 0,
+        unsubscribed_count: campaign.unsubscribed_count || 0,
+        bounced_count: campaign.bounced_count || 0,
+        opened_rate: campaign.opened_rate || 0,
+        clicked_rate: campaign.clicked_rate || 0,
+        unsubscribed_rate: campaign.unsubscribed_rate || 0,
+        bounced_rate: campaign.bounced_rate || 0
+      };
+    });
     
     const totalCampaigns = campaignsWithDetails.length;
     

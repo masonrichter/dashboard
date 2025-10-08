@@ -642,16 +642,7 @@ export async function createAndSendCustomCampaign(
   }
 }
 
-// Get campaign statistics
-export async function getCampaignStats(campaignId: string): Promise<any> {
-  try {
-    const response = await mailerliteApi.get(`/campaigns/${campaignId}/reports`)
-    return response.data.data
-  } catch (error) {
-    console.error(`Error fetching campaign stats for ${campaignId}:`, error)
-    throw error
-  }
-}
+// Note: getCampaignStats function removed - campaign stats are now included in the campaign data itself
 
 // Duplicate a template
 export async function duplicateTemplate(templateId: string, newName: string): Promise<MailerLiteTemplate> {

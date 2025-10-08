@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get sent campaigns (increase limit to get more recent campaigns)
-    const campaignsUrl = `${MAILERLITE_API_URL}/campaigns?filter[status]=sent&limit=200&sort=-created_at`;
+    const campaignsUrl = `${MAILERLITE_API_URL}/campaigns?filter[status]=sent&limit=100`;
 
     const response = await axios.get(campaignsUrl, {
       headers: {
@@ -25,27 +25,29 @@ export async function GET(request: NextRequest) {
     const campaigns = response.data.data || [];
 
     // Use the stats data that's already included in the campaign response
-    const campaignsWithAnalytics = campaigns.map((campaign: any) => {
-      return {
-        id: campaign.id,
-        name: campaign.name,
-        status: campaign.status,
-        subject: campaign.subject,
-        created_at: campaign.created_at,
-        updated_at: campaign.updated_at,
-        send_time: campaign.send_time,
-        finished_at: campaign.finished_at,
-        recipients_count: campaign.recipients_count || 0,
-        opened_count: campaign.opened_count || 0,
-        clicked_count: campaign.clicked_count || 0,
-        unsubscribed_count: campaign.unsubscribed_count || 0,
-        bounced_count: campaign.bounced_count || 0,
-        opened_rate: campaign.opened_rate || 0,
-        clicked_rate: campaign.clicked_rate || 0,
-        unsubscribed_rate: campaign.unsubscribed_rate || 0,
-        bounced_rate: campaign.bounced_rate || 0,
-      };
-    });
+    const campaignsWithAnalytics = campaigns
+      .map((campaign: any) => {
+        return {
+          id: campaign.id,
+          name: campaign.name,
+          status: campaign.status,
+          subject: campaign.subject,
+          created_at: campaign.created_at,
+          updated_at: campaign.updated_at,
+          send_time: campaign.send_time,
+          finished_at: campaign.finished_at,
+          recipients_count: campaign.recipients_count || 0,
+          opened_count: campaign.opened_count || 0,
+          clicked_count: campaign.clicked_count || 0,
+          unsubscribed_count: campaign.unsubscribed_count || 0,
+          bounced_count: campaign.bounced_count || 0,
+          opened_rate: campaign.opened_rate || 0,
+          clicked_rate: campaign.clicked_rate || 0,
+          unsubscribed_rate: campaign.unsubscribed_rate || 0,
+          bounced_rate: campaign.bounced_rate || 0,
+        };
+      })
+      .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()); // Sort by creation date descending
 
     return NextResponse.json(campaignsWithAnalytics);
   } catch (error: any) {

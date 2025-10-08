@@ -210,8 +210,7 @@ export async function getCampaigns(limit = 100, offset = 0): Promise<MailerLiteC
       params: { 
         limit, 
         offset,
-        'filter[status]': 'sent',
-        'sort': '-created_at'
+        'filter[status]': 'sent'
       }
     })
     return response.data.data
@@ -664,28 +663,30 @@ export async function getRecentCampaignsWithStats(limit = 50): Promise<MailerLit
     const campaigns = await getCampaigns(limit)
     
     // Transform campaigns to include stats data that's already available
-    const campaignsWithStats = campaigns.map((campaign) => {
-      return {
-        id: campaign.id,
-        name: campaign.name,
-        subject: campaign.subject,
-        status: campaign.status,
-        sent_at: campaign.send_time || '',
-        recipients_count: campaign.recipients_count || 0,
-        opened_count: campaign.opened_count || 0,
-        clicked_count: campaign.clicked_count || 0,
-        unsubscribed_count: campaign.unsubscribed_count || 0,
-        bounced_count: campaign.bounced_count || 0,
-        complained_count: campaign.complained_count || 0,
-        opened_rate: campaign.opened_rate || 0,
-        clicked_rate: campaign.clicked_rate || 0,
-        unsubscribed_rate: campaign.unsubscribed_rate || 0,
-        bounced_rate: campaign.bounced_rate || 0,
-        complained_rate: campaign.complained_rate || 0,
-        created_at: campaign.created_at,
-        updated_at: campaign.updated_at
-      }
-    })
+    const campaignsWithStats = campaigns
+      .map((campaign) => {
+        return {
+          id: campaign.id,
+          name: campaign.name,
+          subject: campaign.subject,
+          status: campaign.status,
+          sent_at: campaign.send_time || '',
+          recipients_count: campaign.recipients_count || 0,
+          opened_count: campaign.opened_count || 0,
+          clicked_count: campaign.clicked_count || 0,
+          unsubscribed_count: campaign.unsubscribed_count || 0,
+          bounced_count: campaign.bounced_count || 0,
+          complained_count: campaign.complained_count || 0,
+          opened_rate: campaign.opened_rate || 0,
+          clicked_rate: campaign.clicked_rate || 0,
+          unsubscribed_rate: campaign.unsubscribed_rate || 0,
+          bounced_rate: campaign.bounced_rate || 0,
+          complained_rate: campaign.complained_rate || 0,
+          created_at: campaign.created_at,
+          updated_at: campaign.updated_at
+        }
+      })
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) // Sort by creation date descending
     
     return campaignsWithStats
   } catch (error) {

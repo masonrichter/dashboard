@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 
+// Disable caching
+export const revalidate = 0;
+export const dynamic = 'force-dynamic';
+
 const COPPER_API_KEY = process.env.COPPER_API_KEY;
 const COPPER_BASE_URL = 'https://api.copper.com/developer_api/v1';
 const COPPER_USER_EMAIL = process.env.COPPER_USER_EMAIL;
@@ -105,14 +109,65 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    const response = await copperApi.post('/people/search', {
-      contact_type_ids: [2591754],
-      page_size: 200, 
+    // Fetch ALL contacts with pagination (no contact_type_ids filter)
+    let allContacts: any[] = [];
+    let pageNumber = 1;
+    const pageSize = 200;
+    let hasMore = true;
+    
+    console.log('Starting to fetch all contacts with pagination...');
+    
+    while (hasMore) {
+      console.log(`Fetching page ${pageNumber}...`);
+      
+      const response = await copperApi.post('/people/search', {
+        page_number: pageNumber,
+        page_size: pageSize,
+      });
+      
+      const contacts = response.data;
+      allContacts = allContacts.concat(contacts);
+      
+      console.log(`Page ${pageNumber}: ${contacts.length} contacts fetched. Total so far: ${allContacts.length}`);
+      
+      // If we get fewer contacts than pageSize, we've reached the end
+      hasMore = contacts.length === pageSize;
+      pageNumber++;
+      
+      // Safety limit to prevent infinite loops (should handle up to 3,016 contacts)
+      if (pageNumber > 20) {
+        console.log('Reached safety limit of 20 pages');
+        break;
+      }
+    }
+    
+    console.log(`Loaded contacts count: ${allContacts.length}`);
+    
+    // Process contacts and handle duplicates by merging tags
+    const contactMap = new Map<number, any>();
+    
+    allContacts.forEach((contact: any) => {
+      const contactId = contact.id;
+      
+      if (contactMap.has(contactId)) {
+        // Merge tags if contact already exists
+        const existingContact = contactMap.get(contactId);
+        const existingTags = existingContact.tags || [];
+        const newTags = contact.tags || [];
+        const mergedTags = [...new Set([...existingTags, ...newTags])]; // Remove duplicates
+        
+        contactMap.set(contactId, {
+          ...existingContact,
+          tags: mergedTags
+        });
+      } else {
+        contactMap.set(contactId, contact);
+      }
     });
     
-    const currentCustomers = response.data;
+    const uniqueContacts = Array.from(contactMap.values());
     
-    const contacts = currentCustomers.map((contact: any) => ({
+    const contacts = uniqueContacts.map((contact: any) => ({
       id: contact.id,
       name: contact.name || 'Unknown Name',
       firstName: contact.first_name || '',
@@ -132,7 +187,10 @@ export async function GET(request: NextRequest) {
       anniversary: getAnniversaryFromCustomFields(contact.custom_fields),
     }));
     
-    return NextResponse.json(contacts);
+    const response = NextResponse.json(contacts);
+    response.headers.set('Cache-Control', 'no-store');
+    
+    return response;
   } catch (error: any) {
     console.error('Copper API error:', error.response?.data || error.message);
     return NextResponse.json(

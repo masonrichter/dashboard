@@ -8,6 +8,7 @@ import {
   CalendarIcon,
   UsersIcon,
 } from '@heroicons/react/24/outline'
+import { triggerAnalyticsRefreshWithNotification } from '@/lib/analytics-refresh'
 
 interface Campaign {
   id: string
@@ -182,6 +183,9 @@ export default function MassCampaignSender() {
       setSuccessMessage(
         `Campaign sent successfully! Check your MailerLite dashboard for tracking.`
       )
+      
+      // Trigger analytics refresh
+      triggerAnalyticsRefreshWithNotification(`Campaign "${result.campaign?.name || 'Unknown'}" sent successfully`)
     } catch (err: any) {
       setErrorMessage(err.message || 'An unexpected error occurred.')
     } finally {

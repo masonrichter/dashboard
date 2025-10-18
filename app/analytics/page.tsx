@@ -94,28 +94,58 @@ export default function AnalyticsPage() {
   const [mailerLiteData, setMailerLiteData] = useState<MailerLiteAnalyticsData | null>(null);
   const [mailerLiteLoading, setMailerLiteLoading] = useState(true);
   const [mailerLiteError, setMailerLiteError] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
   // GA removed
 
-  useEffect(() => {
-    const fetchMailerLiteData = async () => {
-      try {
-        setMailerLiteLoading(true);
-        setMailerLiteError(null);
-        const response = await fetch('/api/mailerlite-analytics');
-        if (!response.ok) {
-          throw new Error('Failed to fetch MailerLite analytics data');
-        }
-        const data = await response.json();
-        setMailerLiteData(data);
-      } catch (err: any) {
-        setMailerLiteError(err.message);
-      } finally {
-        setMailerLiteLoading(false);
+  const fetchMailerLiteData = async () => {
+    try {
+      setMailerLiteLoading(true);
+      setMailerLiteError(null);
+      const response = await fetch('/api/mailerlite-analytics');
+      if (!response.ok) {
+        throw new Error('Failed to fetch MailerLite analytics data');
       }
-    };
+      const data = await response.json();
+      setMailerLiteData(data);
+      setLastRefresh(new Date());
+    } catch (err: any) {
+      setMailerLiteError(err.message);
+    } finally {
+      setMailerLiteLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchMailerLiteData();
   }, []);
+
+  // Auto-refresh every 30 seconds when auto-refresh is enabled
+  useEffect(() => {
+    if (!autoRefresh) return;
+
+    const interval = setInterval(() => {
+      fetchMailerLiteData();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [autoRefresh]);
+
+  // Listen for campaign send events
+  useEffect(() => {
+    const handleCampaignSent = () => {
+      // Refresh analytics when a campaign is sent
+      fetchMailerLiteData();
+    };
+
+    window.addEventListener('campaign-sent', handleCampaignSent);
+    return () => window.removeEventListener('campaign-sent', handleCampaignSent);
+  }, []);
+
+  const handleManualRefresh = () => {
+    fetchMailerLiteData();
+  };
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat().format(num);
@@ -171,6 +201,46 @@ export default function AnalyticsPage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold text-gray-900">Email Campaign Analytics</h2>
+              {lastRefresh && (
+                <p className="text-sm text-gray-500 mt-1">
+                  Last updated: {lastRefresh.toLocaleTimeString()}
+                  {autoRefresh && (
+                    <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      Auto-refresh ON
+                    </span>
+                  )}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setAutoRefresh(!autoRefresh)}
+                className={`inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  autoRefresh
+                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <ClockIcon className="h-4 w-4 mr-2" />
+                {autoRefresh ? 'Auto-refresh ON' : 'Auto-refresh OFF'}
+              </button>
+              <button
+                onClick={handleManualRefresh}
+                disabled={mailerLiteLoading}
+                className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {mailerLiteLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                    Refreshing...
+                  </>
+                ) : (
+                  <>
+                    <ChartBarIcon className="h-4 w-4 mr-2" />
+                    Refresh Now
+                  </>
+                )}
+              </button>
             </div>
           </div>
                 {mailerLiteLoading ? (

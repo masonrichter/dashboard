@@ -72,6 +72,10 @@ export default function CommunicationPage() {
   const [error, setError] = useState<string | null>(null)
   const [currentStep, setCurrentStep] = useState<Step>('select')
   
+  // Tags pagination state
+  const [currentTagsPage, setCurrentTagsPage] = useState(1)
+  const tagsPerPage = 20
+  
   // Debug current step changes
   useEffect(() => {
     console.log('Current step changed to:', currentStep)
@@ -131,6 +135,7 @@ export default function CommunicationPage() {
         if (!templatesRes.ok) throw new Error('Failed to fetch MailerLite templates')
 
         const contactsData: Contact[] = await contactsRes.json()
+        console.log(`Loaded contacts count: ${contactsData.length}`)
         const groupsData = (await groupsRes.json()).data.map((group: any) => ({
           id: group.id,
           name: group.name,
@@ -181,44 +186,91 @@ export default function CommunicationPage() {
         tags.add('No Tag')
       }
     })
+    
+    // Add the specific "coi - athletics" tag to available tags
+    tags.add('coi - athletics')
+    
     return Array.from(tags).sort()
+  }, [contacts])
+
+  // Filter tags based on search query
+  const filteredTags = useMemo(() => {
+    return allTags.filter(tag => 
+      !searchQuery || tag.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  }, [allTags, searchQuery])
+
+  // Get contacts by tag including "coi - athletics"
+  const contactsByTag = useMemo(() => {
+    const tagMap: Record<string, Contact[]> = {}
+    
+    // Process existing contacts
+    contacts.forEach(contact => {
+      if (contact.tags?.length) {
+        contact.tags.forEach(tag => {
+          if (!tagMap[tag]) tagMap[tag] = []
+          tagMap[tag].push(contact)
+        })
+      } else {
+        if (!tagMap['No Tag']) tagMap['No Tag'] = []
+        tagMap['No Tag'].push(contact)
+      }
+    })
+    
+    // Add "coi - athletics" contacts if they exist
+    const coiAthleticsContacts = contacts.filter(contact => 
+      contact.tags?.includes('coi - athletics')
+    )
+    if (coiAthleticsContacts.length > 0) {
+      tagMap['coi - athletics'] = coiAthleticsContacts
+    }
+    
+    return tagMap
   }, [contacts])
 
   // Filter contacts based on search, tags, and filter type
   const filteredContacts = useMemo(() => {
-    let filtered = contacts
+    let filtered: Contact[] = []
+
+    // If tags are selected, get contacts from those tags
+    if (selectedTags.length > 0) {
+      if (filterType === 'any') {
+        // For 'any' filter: get contacts from ANY of the selected tags
+        const contactSets = selectedTags.map(tag => {
+          if (tag === 'coi - athletics') {
+            // Handle "coi - athletics" tag specifically
+            return contacts.filter(c => c.tags?.includes('coi - athletics'))
+          }
+          return contactsByTag[tag] || []
+        })
+        
+        // Combine and deduplicate contacts
+        const allContacts = contactSets.flat()
+        const uniqueContacts = allContacts.filter((contact, index, self) => 
+          index === self.findIndex(c => c.id === contact.id)
+        )
+        filtered = uniqueContacts
+      } else { // 'all'
+        // For 'all' filter: contacts must have ALL selected tags
+        filtered = contacts.filter(c => 
+          selectedTags.every(tag => 
+            c.tags?.includes(tag) || (tag === 'No Tag' && (!c.tags || c.tags.length === 0))
+          )
+        )
+      }
+    }
 
     // Filter by search query
     if (searchQuery) {
       filtered = filtered.filter(c =>
         c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         c.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
+        c.tags?.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
       )
     }
 
-    // Filter by selected tags
-    if (selectedTags.length > 0) {
-      // Use the actual filter type selection
-      if (filterType === 'any') {
-        filtered = filtered.filter(c => 
-          c.tags?.some(tag => selectedTags.includes(tag)) || 
-          (c.tags?.length === 0 && selectedTags.includes('No Tag'))
-        )
-      } else { // 'all'
-        filtered = filtered.filter(c => 
-          selectedTags.every(tag => 
-            c.tags?.includes(tag) || (tag === 'No Tag' && (!c.tags || c.tags.length === 0))
-          )
-        )
-      }
-    } else {
-      // Return empty array when no tags are selected
-      filtered = []
-    }
-
     return filtered
-  }, [contacts, searchQuery, selectedTags, filterType, currentStep])
+  }, [contacts, contactsByTag, searchQuery, selectedTags, filterType, currentStep])
 
   // Auto-select contacts when using tag filtering
   useEffect(() => {
@@ -266,6 +318,11 @@ export default function CommunicationPage() {
       setSelectedContactIds([])
     }
   }, [searchMode])
+
+  // Reset tags page when search query changes
+  useEffect(() => {
+    setCurrentTagsPage(1)
+  }, [searchQuery])
 
   // Copper selection handlers
   const toggleContact = (id: number) => {
@@ -772,10 +829,31 @@ export default function CommunicationPage() {
 
                         {/* Tag Selection */}
                         <div className="bg-gray-50 p-3 rounded-xl flex-1">
-                          <p className="text-sm font-medium text-gray-700 mb-2">Available tags:</p>
-                          <div className="flex flex-wrap gap-1.5 overflow-y-auto scrollbar-hide" style={{ maxHeight: 'calc(100% - 25px)' }}>
-                            {allTags
-                              .filter(tag => !searchQuery || tag.toLowerCase().includes(searchQuery.toLowerCase()))
+                          <div className="flex justify-between items-center mb-2">
+                            <p className="text-sm font-medium text-gray-700">Available tags:</p>
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => setCurrentTagsPage(Math.max(1, currentTagsPage - 1))}
+                                disabled={currentTagsPage === 1}
+                                className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                ← Prev
+                              </button>
+                              <span className="text-xs text-gray-600">
+                                {currentTagsPage} of {Math.ceil(filteredTags.length / tagsPerPage)}
+                              </span>
+                              <button
+                                onClick={() => setCurrentTagsPage(Math.min(Math.ceil(filteredTags.length / tagsPerPage), currentTagsPage + 1))}
+                                disabled={currentTagsPage >= Math.ceil(filteredTags.length / tagsPerPage)}
+                                className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Next →
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5 overflow-y-auto scrollbar-hide" style={{ maxHeight: 'calc(100% - 60px)' }}>
+                            {filteredTags
+                              .slice((currentTagsPage - 1) * tagsPerPage, currentTagsPage * tagsPerPage)
                               .map(tag => (
                                 <button
                                   key={tag}

@@ -6,6 +6,7 @@ import {
   CheckCircleIcon,
   PaperAirplaneIcon,
 } from '@heroicons/react/24/outline'
+import { triggerAnalyticsRefreshWithNotification } from '@/lib/analytics-refresh'
 
 interface MailerLiteGroup {
   id: number
@@ -117,6 +118,9 @@ export default function QuickEmailSender() {
       }
 
       setSuccessMessage('Email sent successfully!')
+      
+      // Trigger analytics refresh
+      triggerAnalyticsRefreshWithNotification(`Quick email "${subject}" sent successfully`)
       
       // Reset form
       setSubject('')

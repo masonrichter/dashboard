@@ -207,11 +207,7 @@ export async function deleteSubscriber(id: string): Promise<void> {
 export async function getCampaigns(limit = 100, offset = 0): Promise<MailerLiteCampaign[]> {
   try {
     const response = await mailerliteApi.get('/campaigns', {
-      params: { 
-        limit, 
-        offset,
-        'filter[status]': 'sent'
-      }
+      params: { limit, offset }
     })
     return response.data.data
   } catch (error) {
@@ -641,7 +637,16 @@ export async function createAndSendCustomCampaign(
   }
 }
 
-// Note: getCampaignStats function removed - campaign stats are now included in the campaign data itself
+// Get campaign statistics
+export async function getCampaignStats(campaignId: string): Promise<any> {
+  try {
+    const response = await mailerliteApi.get(`/campaigns/${campaignId}/reports`)
+    return response.data.data
+  } catch (error) {
+    console.error(`Error fetching campaign stats for ${campaignId}:`, error)
+    throw error
+  }
+}
 
 // Duplicate a template
 export async function duplicateTemplate(templateId: string, newName: string): Promise<MailerLiteTemplate> {
@@ -657,36 +662,62 @@ export async function duplicateTemplate(templateId: string, newName: string): Pr
 }
 
 // Get recent campaigns with stats
-export async function getRecentCampaignsWithStats(limit = 50): Promise<MailerLiteCampaignStats[]> {
+export async function getRecentCampaignsWithStats(limit = 20): Promise<MailerLiteCampaignStats[]> {
   try {
-    // Get recent campaigns (they already include stats data)
+    // Get recent campaigns
     const campaigns = await getCampaigns(limit)
     
-    // Transform campaigns to include stats data that's already available
-    const campaignsWithStats = campaigns
-      .map((campaign) => {
-        return {
-          id: campaign.id,
-          name: campaign.name,
-          subject: campaign.subject,
-          status: campaign.status,
-          sent_at: campaign.send_time || '',
-          recipients_count: campaign.recipients_count || 0,
-          opened_count: campaign.opened_count || 0,
-          clicked_count: campaign.clicked_count || 0,
-          unsubscribed_count: campaign.unsubscribed_count || 0,
-          bounced_count: campaign.bounced_count || 0,
-          complained_count: campaign.complained_count || 0,
-          opened_rate: campaign.opened_rate || 0,
-          clicked_rate: campaign.clicked_rate || 0,
-          unsubscribed_rate: campaign.unsubscribed_rate || 0,
-          bounced_rate: campaign.bounced_rate || 0,
-          complained_rate: campaign.complained_rate || 0,
-          created_at: campaign.created_at,
-          updated_at: campaign.updated_at
+    // Get stats for each campaign
+    const campaignsWithStats = await Promise.all(
+      campaigns.map(async (campaign) => {
+        try {
+          const stats = await getCampaignStats(campaign.id)
+          return {
+            id: campaign.id,
+            name: campaign.name,
+            subject: campaign.subject,
+            status: campaign.status,
+            sent_at: campaign.send_time || '',
+            recipients_count: campaign.recipients_count,
+            opened_count: campaign.opened_count,
+            clicked_count: campaign.clicked_count,
+            unsubscribed_count: campaign.unsubscribed_count,
+            bounced_count: campaign.bounced_count,
+            complained_count: campaign.complained_count,
+            opened_rate: campaign.opened_rate,
+            clicked_rate: campaign.clicked_rate,
+            unsubscribed_rate: campaign.unsubscribed_rate,
+            bounced_rate: campaign.bounced_rate,
+            complained_rate: campaign.complained_rate,
+            created_at: campaign.created_at,
+            updated_at: campaign.updated_at
+          }
+        } catch (error) {
+          console.error(`Error fetching stats for campaign ${campaign.id}:`, error)
+          // Return campaign without stats if stats fetch fails
+          return {
+            id: campaign.id,
+            name: campaign.name,
+            subject: campaign.subject,
+            status: campaign.status,
+            sent_at: campaign.send_time || '',
+            recipients_count: campaign.recipients_count,
+            opened_count: 0,
+            clicked_count: 0,
+            unsubscribed_count: 0,
+            bounced_count: 0,
+            complained_count: 0,
+            opened_rate: 0,
+            clicked_rate: 0,
+            unsubscribed_rate: 0,
+            bounced_rate: 0,
+            complained_rate: 0,
+            created_at: campaign.created_at,
+            updated_at: campaign.updated_at
+          }
         }
       })
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) // Sort by creation date descending
+    )
     
     return campaignsWithStats
   } catch (error) {

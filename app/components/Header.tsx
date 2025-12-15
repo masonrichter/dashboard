@@ -9,14 +9,11 @@ import {
   ShareIcon, 
   ChartBarIcon, 
   TagIcon,
-  CurrencyDollarIcon,
-  ArrowRightOnRectangleIcon,
-  Cog6ToothIcon
+  CurrencyDollarIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { format } from 'date-fns'
-import { createClientSupabase } from '@/lib/supabase-client'
 
 const navigation = [
   { name: 'Clients', href: '/clients-overview', icon: UsersIcon },
@@ -26,14 +23,6 @@ const navigation = [
 
 export default function Header() {
   const pathname = usePathname()
-  const router = useRouter()
-  const supabase = createClientSupabase()
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/login')
-    router.refresh()
-  }
 
   return (
     <>
@@ -91,7 +80,7 @@ export default function Header() {
 
 
 
-            {/* Profile, Settings & Logout */}
+            {/* Profile */}
             <div className="flex items-center gap-x-3 pl-4 border-l border-gray-200">
               <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-sm">
                 <span className="text-sm font-semibold text-white">G</span>
@@ -100,20 +89,6 @@ export default function Header() {
                 <p className="text-sm font-semibold text-gray-900">Glenn</p>
                 <p className="text-xs text-gray-500">Administrator</p>
               </div>
-              <Link
-                href="/settings"
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Settings"
-              >
-                <Cog6ToothIcon className="h-5 w-5" />
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Logout"
-              >
-                <ArrowRightOnRectangleIcon className="h-5 w-5" />
-              </button>
             </div>
           </div>
         </div>

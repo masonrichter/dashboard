@@ -1,11 +1,9 @@
 // middleware.ts
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { createMiddlewareSupabase } from '@/lib/supabase-middleware'
 
-const USER = process.env.BASIC_AUTH_USER || ''
-const PASS = process.env.BASIC_AUTH_PASS || ''
-
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   // Redirect old clients route to new clients-overview to avoid UI flash
@@ -13,6 +11,15 @@ export function middleware(req: NextRequest) {
     const url = req.nextUrl.clone()
     url.pathname = '/clients-overview'
     return NextResponse.redirect(url)
+  }
+
+  // Allow login page, password reset, and API routes
+  if (
+    pathname === '/login' ||
+    pathname === '/reset-password' ||
+    pathname.startsWith('/api/')
+  ) {
+    return NextResponse.next()
   }
 
   // allow framework internals & static assets
@@ -30,25 +37,24 @@ export function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
-  // read auth header
-  const auth = req.headers.get('authorization') || ''
-  const [scheme, encoded] = auth.split(' ')
+  // Check Supabase authentication
+  const { supabase, response } = createMiddlewareSupabase(req)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (scheme === 'Basic' && encoded) {
-    // Edge runtime: use atob instead of Buffer
-    const [user, pass] = atob(encoded).split(':')
-    if (user === USER && pass === PASS) {
-      return NextResponse.next()
-    }
+  // If no user, redirect to login
+  if (!user) {
+    const url = req.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url)
   }
 
-  return new NextResponse('Authentication required.', {
-    status: 401,
-    headers: { 'WWW-Authenticate': 'Basic realm="Secure Area"' },
-  })
+  // User is authenticated, allow access
+  return response
 }
 
 // Protect everything by default. Add exceptions here (e.g., health check).
 export const config = {
-  matcher: ['/((?!api/).*)'], // exclude all API routes from basic auth
+  matcher: ['/((?!api/).*)'], // exclude all API routes from auth check
 }

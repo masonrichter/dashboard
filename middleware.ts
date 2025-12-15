@@ -43,10 +43,14 @@ export async function middleware(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // If no user, redirect to login
+  // If no user, redirect to login with current path as redirect parameter
   if (!user) {
     const url = req.nextUrl.clone()
     url.pathname = '/login'
+    // Preserve the original path so we can redirect back after login
+    if (pathname !== '/login' && pathname !== '/') {
+      url.searchParams.set('redirect', pathname)
+    }
     return NextResponse.redirect(url)
   }
 

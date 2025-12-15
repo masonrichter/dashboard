@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClientSupabase } from '@/lib/supabase-client'
@@ -13,6 +13,21 @@ export default function LoginPage() {
   const [success, setSuccess] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClientSupabase()
+
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        // Get redirect URL from query params or default to clients-overview
+        const params = new URLSearchParams(window.location.search)
+        const redirectTo = params.get('redirect') || '/clients-overview'
+        router.push(redirectTo)
+        router.refresh()
+      }
+    }
+    checkSession()
+  }, [supabase, router])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,9 +47,15 @@ export default function LoginPage() {
       }
 
       if (data.user) {
-        // Redirect to home page after successful login
-        router.push('/')
-        router.refresh()
+        // Get redirect URL from query params or default to clients-overview
+        const params = new URLSearchParams(window.location.search)
+        const redirectTo = params.get('redirect') || '/clients-overview'
+        // Use router.push which works in both iframe and regular contexts
+        router.push(redirectTo)
+        // Small delay to ensure session is set before refresh
+        setTimeout(() => {
+          router.refresh()
+        }, 100)
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.')
